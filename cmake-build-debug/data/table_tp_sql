@@ -1,0 +1,1 @@
+create table tp(id integer, address varchar, a boolean);
