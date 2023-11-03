@@ -47,6 +47,8 @@ DBOp createDBOp(){
     dbOperation.successMsg = createBuffer();
     dbOperation.error = createBuffer();
     dbOperation.result = createBuffer();
+    dbOperation.rows = malloc(sizeof(char ) * 1);
+    dbOperation.rowCount = 0;
     dbOperation.maxColSpace = 5;
     dbOperation.lineCount = 0;
     dbOperation.colCount = 0;
@@ -503,6 +505,8 @@ DBOp dbUpdate(Node sqlNode, Node tableNode){
     char *tableName = getTableName(sqlNode);
     char* tBuffer = createBuffer();
     FILE *tableFile = fopen(tableName, "r+");
+    char **rows = malloc(sizeof(char ) * 1);
+    size_t rowCount = 0;
     if(tableFile != NULL){
         char *line = NULL;
         size_t len = 0;
@@ -576,12 +580,30 @@ DBOp dbUpdate(Node sqlNode, Node tableNode){
                         j++;
                     }
                 }
+                rows[rowCount] = createBuffer();
+                insertInBuffer(&rows[rowCount], line);
+                rowCount++;
+                char **tempRow = realloc(rows, sizeof(char) * rowCount);
+                if(tempRow != NULL){
+                    rows = tempRow;
+                }
+                else{
+                    dbOp.code = FAIL;
+                    insertInBuffer(&dbOp.error, "MEM Failed");
+                    free(tableName);
+                    free(tBuffer);
+                    free(line);
+                    return dbOp;
+                }
+
             }
             insertInBuffer(&tBuffer, "%s", line);
         }
         fclose(tableFile);
         dbOp.lineCount += lineCount;
     }
+    dbOp.rows = rows;
+    dbOp.rowCount = rowCount;
     FILE *writeFile = fopen(tableName, "w");
     if(writeFile != NULL){
         fprintf(writeFile, "%s", tBuffer);
@@ -602,6 +624,8 @@ DBOp dbSelect(Node sqlNode, Node tableNode){
     DBOp dbOp = createDbOpWithHeader(sqlNode, tableNode);
     char *tableName = getTableName(sqlNode);
     FILE *tableFile = fopen(tableName, "r");
+    char **rows = malloc(sizeof(char ) * 1);
+    size_t rowCount = 0;
     if(tableFile != NULL){
         char *line = NULL;
         size_t len = 0;
@@ -666,12 +690,29 @@ DBOp dbSelect(Node sqlNode, Node tableNode){
             if(shouldInsertInRow == 1){
                 insertInBuffer(&rowBuffer, "\n");
                 insertInBuffer(&dbOp.result, "%s", rowBuffer);
+                rows[rowCount] = createBuffer();
+                insertInBuffer(&rows[rowCount], line);
+                rowCount++;
+                char **tempRow = realloc(rows, sizeof(char) * rowCount);
+                if(tempRow != NULL){
+                    rows = tempRow;
+                }
+                else{
+                    dbOp.code = FAIL;
+                    insertInBuffer(&dbOp.error, "MEM Failed");
+                    free(tableName);
+                    free(line);
+                    return dbOp;
+                }
+
             }
             clearBuffer(&rowBuffer);
         }
         fclose(tableFile);
         dbOp.lineCount += lineCount;
     }
+    dbOp.rows = rows;
+    dbOp.rowCount = rowCount;
     return dbOp;
 }
 
@@ -757,6 +798,8 @@ DBOp dbInsert(Node sqlNode, Node tableNode){
     }
     size_t _id = -1;
     FILE *pkFile;
+    char **rows = malloc(sizeof(char) * 1);
+    size_t rowCount = 0;
     if(fileExists(tableName)){
         FILE *table = fopen(tableName, "a+");
         if(table != NULL){
@@ -827,6 +870,19 @@ DBOp dbInsert(Node sqlNode, Node tableNode){
             insertInBuffer(&rowBuffer, "\n");
             if(dbOp.code == SUCCESS){
                 insertInBuffer(&dbOp.result, "\n");
+                rows[rowCount] = createBuffer();
+                insertInBuffer(&rows[rowCount], "%s", rowBuffer);
+                rowCount++;
+                char **tempRow = realloc(rows, sizeof(char) * rowCount);
+                if(tempRow != NULL){
+                    rows = tempRow;
+                }
+                else{
+                    dbOp.code = FAIL;
+                    insertInBuffer(&dbOp.error, "MEM Failed");
+                    free(tableName);
+                    return dbOp;
+                }
                 fputs(rowBuffer, table);
             }
             clearBuffer(&rowBuffer);
@@ -854,7 +910,8 @@ DBOp dbInsert(Node sqlNode, Node tableNode){
     else if(dbOp.code == FAIL){
 
     }
-
+    dbOp.rows = rows;
+    dbOp.rowCount = rowCount;
     free(tableName);
     return dbOp;
 }
@@ -960,4 +1017,33 @@ void printDbOp(DBOp *dbOp){
             start = i + 1;
         }
     }
+}
+
+char* getRowValue(char** rows, size_t rowIdx, size_t columnIdx, size_t rowCount) {
+    size_t i = 0;
+    size_t commas = 0;
+    if (rowIdx > rowCount){
+        return NULL;
+    }
+    size_t start = 0;
+    char* row = rows[rowIdx];
+    while (1) {
+        if ((i > 0 && row[i] == ',' && row[i - 1] != '\\') || row[i] == '\n') {
+            commas++;
+            if(commas - 2 == columnIdx){
+                char *value = createBufferWithSize(i - start);
+                strncpy(value, row + start, i - start);
+                value[i - start] = '\0';
+                return value;
+            }
+            else{
+                start = i + 1;
+            }
+            if(row[i] == '\n'){
+                break;
+            }
+        }
+        i++;
+    }
+    return NULL;
 }

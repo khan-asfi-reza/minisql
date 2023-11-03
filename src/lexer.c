@@ -137,7 +137,7 @@ TokenRet lexAnalyze(char *input) {
             }
         }
 
-        if (isInStr == 0 && (c == ' ' || c == ';' || isSpecialPunct(c))) {
+        if (isInStr == 0 && (c == ' ' || c == ';' || isSpecialPunct(c) )) {
             // If the token that is being selected is a full string, not a punctuation then
             if (length != prev) {
                 char token[length - prev + 1];
@@ -537,6 +537,7 @@ Node createASTNode(TokenRet tokenRet){
                             return handleWhereClauseError(tokenRet.sql, tokens[i].start);
                         }
                         node.filters[cols_index].symbol = tokens[i];
+
                         prevType = TOKEN_SYMBOL;
                     }
 

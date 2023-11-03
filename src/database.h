@@ -28,6 +28,8 @@ struct {
     char* result;
     char* error;
     char* successMsg;
+    char** rows;
+    size_t rowCount;
     size_t maxColSpace;
     DBCode code ; // 0 - Internal db error , 1 - Success, 4 - DB User error
     size_t lineCount;
@@ -47,7 +49,7 @@ DBOp dbUpdate(Node sqlNode, Node tableNode);
 DBOp dbDelete(Node sqlNode, Node tableNode);
 
 void mergeDbOp(DBOp* source, DBOp* destination);
-
+char* getRowValue(char** rows, size_t rowIdx, size_t columnIdx, size_t rowCount);
 void clearDBOp(DBOp *dbOp);
 void printDbOp(DBOp *dbOp);
 

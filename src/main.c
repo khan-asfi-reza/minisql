@@ -14,7 +14,7 @@
 
 void printIntroText(){
     printf("\033[0;32m");
-    printf("Booting MiniSql - v1\n");
+    printf("MiniSql - v0.1\n");
     printf("=====================================================\n");
     printf("m    m   iii   nnnn    iii   ssss    q q q       ll\n");
     printf("mm  mm    i    n   n    i    ss      q   q    q  ll   \n");
@@ -39,12 +39,10 @@ void clearInputBuffer() {
 }
 
 
-User getUserInfo(){
+User getUserInfo(int confirmPassword){
     fflush(stdin);
     User user;
     bool isValidInput;
-    printf("Create your account\n");
-
     while (1) {
         isValidInput = true;
 
@@ -69,13 +67,17 @@ User getUserInfo(){
             printf("Password cannot exceed 32 characters.\n");
             continue;
         }
-        printf("Confirm password: ");
-        fgets(user.confirmPassword, sizeof(user.confirmPassword), stdin);
-        user.confirmPassword[strcspn(user.confirmPassword, "\n")] = 0;
 
-        if (strcmp(user.password, user.confirmPassword) != 0) {
-            printf("Passwords do not match. Try again.\n");
-            continue;
+        if(confirmPassword == 1){
+
+            printf("Confirm password: ");
+            fgets(user.confirmPassword, sizeof(user.confirmPassword), stdin);
+            user.confirmPassword[strcspn(user.confirmPassword, "\n")] = 0;
+
+            if (strcmp(user.password, user.confirmPassword) != 0) {
+                printf("Passwords do not match. Try again.\n");
+                continue;
+            }
         }
 
         break;
@@ -84,26 +86,22 @@ User getUserInfo(){
 
 }
 
-int createUser(Node refNode){
-    User user = getUserInfo();
-    int requiredSize = snprintf(NULL, 0, "INSERT INTO TABLE user (username, password) VALUES ('%s', '%s')", user.username, user.password) + 1; // +1 for null terminator
-    char *query = malloc(requiredSize);
-    if (query == NULL) {
-        perror("Malloc failed");
-        return -1;
-    }
-    snprintf(query, requiredSize, "INSERT INTO user (username, password) VALUES ('%s', '%s')", user.username, user.password);
+int createUser(Node *refNode){
+    printf("Create your account\n");
+    User user = getUserInfo(1);
+    char *buffer = createBuffer();
+    insertInBuffer(&buffer, "INSERT INTO user (username, password) VALUES ('%s', '%s');", user.username, user.password);
     TokenRet tokenRet= lexAnalyze(
-            query
+            buffer
     );
     Node node__ = createASTNode(tokenRet);
-    DBOp dbOp = dbInsert(node__, refNode);
+    DBOp dbOp = dbInsert(node__, *refNode);
     printDbOp(&dbOp);
     return 1;
 }
 
 
-void initialize(){
+int initialize(){
     if (directory_exists(DATA_DIR) != 1) {
         if (create_directory(DATA_DIR)) {
             printf("Setting up 'minisql database.\n");
@@ -123,18 +121,61 @@ void initialize(){
         );
         Node node = createASTNode(tokenRet);
         dbCreateTable(node);
-        createUser(node);
+        return 0;
     }
+    return 1;
 
+}
+
+
+int authenticate(Node *refNode){
+    printf("Login to your account\n");
+    User user = getUserInfo(0);
+    char *buffer = createBuffer();
+    insertInBuffer(&buffer, "SELECT username, password FROM user where username = '%s';", user.username);
+    TokenRet tokenRet= lexAnalyze(
+            buffer
+    );
+    Node node = createASTNode(tokenRet);
+    DBOp dbOp = dbSelect(node, *refNode);
+    if(dbOp.rowCount != 1){
+        clearBuffer(&buffer);
+        return -1;
+    }
+    else{
+        char* pass = getRowValue(dbOp.rows, 0, 2, dbOp.rowCount);
+        if(strcmp(pass, user.password) == 0){
+            clearBuffer(&buffer);
+            return 1;
+        }
+    }
+    clearBuffer(&buffer);
+    return 0;
 }
 
 
 int main() {
 
     printIntroText();
-    initialize();
+    int setup = initialize();
     NodeList tableList = loadTables();
-
+    Node *userTable = getNodeFromList(&tableList, "user");
+    if(setup == 0){
+        createUser(userTable);
+    }
+    while (1){
+        int auth = authenticate(userTable);
+        if(auth == 1){
+            printSuccess("Logged in successfully");
+            break;
+        }
+        else if(auth == -1){
+            printError("User doesn't exist");
+        }
+        else{
+            printError("User password doesn't match");
+        }
+    }
     while (1) {
         printf("\n$>> ");
         // Takes input
@@ -144,11 +185,10 @@ int main() {
                 exit(0);
             }
             else if(caseInsensitiveCompare(input, "create user;") == 0){
-                Node *userTable = getNodeFromList(&tableList, "user");
-                createUser(*userTable);
+                createUser(userTable);
             }
             else{
-                TokenRet tokenRet= lexAnalyze(input);
+                TokenRet tokenRet = lexAnalyze(input);
                 Node node = createASTNode(tokenRet);
                 if(node.isInvalid == 0){
                     Node *tableNode = getNodeFromList(&tableList, node.table.value);
@@ -202,6 +242,7 @@ int main() {
                             DBOp dbOp = dbCreateTable(node);
                             printSuccess("%s", dbOp.successMsg);
                             clearDBOp(&dbOp);
+                            tableList = loadTables();
                         }
                         else{
                             printError("Table `%s` doesn't exist", node.table.value);
