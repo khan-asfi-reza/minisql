@@ -1,6 +1,3 @@
-//
-// Created by Khan Asfi Reza on 27/10/23.
-//
 #include "lexer.h"
 #include "stdlib.h"
 #include "stdio.h"
@@ -358,6 +355,245 @@ size_t getPkFromPkFile(FILE *pkFile){
 }
 
 
+int deleteLine(const char *filename, const size_t *lines, size_t size) {
+    FILE *file;
+    char *buffer, *newBuffer;
+    long length;
+    size_t line_count = 1;
+    size_t current_line = 0;
+    char *cursor, *next_line;
+    file = fopen(filename, "r");
+    if (file == NULL) {
+        printError("Unable to open file for deletion");
+        return -1;
+    }
+
+    fseek(file, 0, SEEK_END);
+    length = ftell(file);
+    rewind(file);
+
+    buffer = (char *)malloc(length + 1);
+    if (buffer == NULL) {
+        printError("Error allocating memory");
+        fclose(file);
+        return -1;
+    }
+
+    fread(buffer, length, 1, file);
+    fclose(file);
+    buffer[length] = '\0';
+
+    newBuffer = (char *)malloc(length + 1);
+    if (newBuffer == NULL) {
+        printError("Error allocating memory for new buffer");
+        free(buffer);
+        return -1;
+    }
+
+    cursor = buffer;
+    next_line = NULL;
+    size_t newBufferIdx = 0;
+    while (line_count <= lines[size - 1] && *cursor != '\0') {
+        if (current_line < size && line_count == lines[current_line]) {
+            next_line = strchr(cursor, '\n');
+            if (next_line != NULL) {
+                cursor = next_line + 1;
+            } else {
+                cursor = cursor + strlen(cursor);
+            }
+            current_line++;
+        } else {
+            next_line = strchr(cursor, '\n');
+            size_t line_length = (next_line != NULL) ? (size_t)(next_line - cursor) + 1 : strlen(cursor);
+            memcpy(newBuffer + newBufferIdx, cursor, line_length);
+            newBufferIdx += line_length;
+            cursor += line_length;
+        }
+        line_count++;
+    }
+    if (*cursor != '\0') {
+        strcpy(newBuffer + newBufferIdx, cursor);
+    }
+    file = fopen(filename, "w");
+    if (file == NULL) {
+        perror("Error opening file");
+        free(buffer);
+        free(newBuffer);
+        return -1;
+    }
+    fwrite(newBuffer, strlen(newBuffer), 1, file);
+    fclose(file);
+    free(buffer);
+    free(newBuffer);
+    return 0;
+}
+
+
+int filterValue(Column filter, const char* value){
+    int shouldInsertInRow = 1;
+    if(filter.valueToken.type == TOKEN_NUMBER && isNumber(value)){
+        size_t val = strToLongInt(value);
+        size_t cmpVal = strToLongInt(filter.valueToken.value);
+        if(strcmp(filter.symbol.value, "<") == 0){
+            if(val < cmpVal){
+                shouldInsertInRow = 1;
+            }
+            else{
+                shouldInsertInRow = 0;
+            }
+        }
+        else if(strcmp(filter.symbol.value, ">") == 0){
+            if(val > cmpVal){
+                shouldInsertInRow = 1;
+            }
+            else{
+                shouldInsertInRow = 0;
+            }
+        }
+        else if(strcmp(filter.symbol.value, ">=") == 0){
+            if(val >= cmpVal){
+                shouldInsertInRow = 1;
+            }
+            else{
+                shouldInsertInRow = 0;
+            }
+        }
+        else if(strcmp(filter.symbol.value, "<=") == 0){
+            if(val <= cmpVal){
+                shouldInsertInRow = 1;
+            }
+            else{
+                shouldInsertInRow = 0;
+            }
+        }
+        else if(strcmp(filter.symbol.value, "!=") == 0){
+            if(val != cmpVal){
+                shouldInsertInRow = 1;
+            }
+            else{
+                shouldInsertInRow = 0;
+            }
+        }
+        else if(strcmp(filter.symbol.value, "=") == 0){
+            if(val == cmpVal){
+                shouldInsertInRow = 1;
+            }
+            else{
+                shouldInsertInRow = 0;
+            }
+        }
+        else{
+            shouldInsertInRow = 0;
+        }
+    }
+    else if(strcmp(filter.valueToken.value, value) != 0){
+        shouldInsertInRow = 0;
+    }
+    return shouldInsertInRow;
+}
+
+DBOp dbUpdate(Node sqlNode, Node tableNode){
+    Node sNode = sqlNode;
+    if(sqlNode.isAllCol){
+        sNode = tableNode;
+    }
+    DBOp dbOp = createDbOpWithHeader(sqlNode, tableNode);
+
+    size_t upCount = 0;
+    char *tableName = getTableName(sqlNode);
+    char* tBuffer = createBuffer();
+    FILE *tableFile = fopen(tableName, "r+");
+    if(tableFile != NULL){
+        char *line = NULL;
+        size_t len = 0;
+        int lineCount = 0;
+        while (getline(&line, &len, tableFile) != -1){
+            lineCount++;
+            int shouldInsertInRow = 1;
+            for (int fil = 0; fil < sNode.filtersLen; ++fil) {
+                Column filter = sNode.filters[fil];
+                int colIdx = getColumnIndex(&tableNode, sNode.filters[fil].columnToken.value);
+                size_t start = 0;
+                size_t i = 0;
+                size_t commas = 0;
+                while (1){
+                    if((i>0 && line[i] == ',' && line[i-1] != '\\') || line[i] == '\n'){
+                        commas++;
+                        if(colIdx == commas - 2){
+                            char *value = createBufferWithSize(i - start);
+                            strncpy(value, line + start, i - start);
+                            value[i - start] = '\0';
+                            removeSingleQuotes(filter.valueToken.value);
+                            shouldInsertInRow = filterValue(filter, value);
+                            clearBuffer(&value);
+                            break;
+                        }
+                        else{
+                            start = i + 1;
+                        }
+                    }
+                    i++;
+                }
+                if(shouldInsertInRow == 0){
+                    break;
+                }
+            }
+            if(shouldInsertInRow == 1){
+                upCount++;
+                for (int col = 0; col < sNode.colsLen; ++col) {
+                    Column column = sNode.columns[col];
+                    int colIdx = getColumnIndex(&tableNode, column.columnToken.value);
+                    size_t iStart = 0;
+                    size_t j = 0;
+                    size_t commas = 0;
+                    while (1){
+                        if((j>0 && line[j] == ',' && line[j-1] != '\\') || line[j] == '\n'){
+                            commas++;
+                            if(colIdx == commas - 2){
+                                int match = 0;
+                                if(tableNode.columns[colIdx].isUnique == 1){
+                                    match = matchColumnValue(tableName, colIdx, column.valueToken.value);
+                                }
+                                if(match == 0 && upCount < 2){
+                                    removeSingleQuotes(column.valueToken.value);
+                                    replaceString(line, iStart, j-1, column.valueToken.value);
+                                    break;
+                                }
+                                else{
+                                    dbOp.code = FAIL;
+                                    insertInBuffer(&dbOp.error, "Duplicate value `%s` for column `%s` violates unique constraint", column.valueToken.value, column.columnToken.value);
+                                    free(tableName);
+                                    free(tBuffer);
+                                    free(line);
+                                    return dbOp;
+                                }
+                            }
+
+                            else{
+                                iStart = j + 1;
+                            }
+                        }
+                        j++;
+                    }
+                }
+            }
+            insertInBuffer(&tBuffer, "%s", line);
+        }
+        fclose(tableFile);
+        dbOp.lineCount += lineCount;
+    }
+    FILE *writeFile = fopen(tableName, "w");
+    if(writeFile != NULL){
+        fprintf(writeFile, "%s", tBuffer);
+    }
+    fclose(writeFile);
+    clearBuffer(&tBuffer);
+    insertInBuffer(&dbOp.successMsg, "Updated `%zd` rows in table %s", upCount, sNode.table.value);
+    free(tableName);
+    return dbOp;
+}
+
+
 DBOp dbSelect(Node sqlNode, Node tableNode){
     Node sNode = sqlNode;
     if(sqlNode.isAllCol){
@@ -393,9 +629,7 @@ DBOp dbSelect(Node sqlNode, Node tableNode){
                                 Column filter = sqlNode.filters[filterColExist];
                                 if(filter.valueToken.value != NULL){
                                     removeSingleQuotes(filter.valueToken.value);
-                                    if(strcmp(filter.valueToken.value, value) != 0){
-                                        shouldInsertInRow = 0;
-                                    }
+                                    shouldInsertInRow = filterValue(filter, value);
                                 }
                                 else{
                                     dbOp.code = FAIL;
@@ -441,6 +675,80 @@ DBOp dbSelect(Node sqlNode, Node tableNode){
     return dbOp;
 }
 
+DBOp dbDelete(Node sqlNode, Node tableNode){
+    Node sNode = sqlNode;
+    if(sqlNode.isAllCol){
+        sNode = tableNode;
+    }
+    DBOp dbOp = createDbOpWithHeader(sqlNode, tableNode);
+    size_t *linesToDelete = malloc(sizeof(size_t) * 1);
+    size_t lIdx = 0;
+    char *tableName = getTableName(sqlNode);
+    FILE *tableFile = fopen(tableName, "r");
+    if(tableFile != NULL){
+        char *line = NULL;
+        size_t len = 0;
+        int lineCount = 0;
+        while (getline(&line, &len, tableFile) != -1){
+            lineCount++;
+            int shouldInsertInRow = 1;
+            for (int fil = 0; fil < sNode.filtersLen; ++fil) {
+                Column filter = sNode.filters[fil];
+                int colIdx = getColumnIndex(&tableNode, sNode.filters[fil].columnToken.value);
+                size_t start = 0;
+                size_t i = 0;
+                size_t commas = 0;
+                while (1){
+                    if((i>0 && line[i] == ',' && line[i-1] != '\\') || line[i] == '\n'){
+                        commas++;
+                        if(colIdx == commas - 2){
+                            char *value = createBufferWithSize(i - start);
+                            strncpy(value, line + start, i - start);
+                            value[i - start] = '\0';
+                            removeSingleQuotes(filter.valueToken.value);
+                            shouldInsertInRow = filterValue(filter, value);
+                            clearBuffer(&value);
+                            break;
+                        }
+                        else{
+                            start = i + 1;
+                        }
+                    }
+                    i++;
+                }
+                if(shouldInsertInRow == 0){
+                    break;
+                }
+            }
+            if(shouldInsertInRow == 1){
+                linesToDelete[lIdx] = lineCount;
+                lIdx++;
+                size_t *nL = realloc(linesToDelete, sizeof(size_t)*lIdx);
+                if(nL != NULL){
+                    linesToDelete=nL;
+                }
+                else{
+                    return dbOp;
+                }
+            }
+
+        }
+        fclose(tableFile);
+        dbOp.lineCount += lineCount;
+    }
+    int r = deleteLine(tableName, linesToDelete, lIdx);
+    if(r == 0){
+        insertInBuffer(&dbOp.successMsg, "Deleted `%zd` rows in table %s", lIdx, sNode.table.value);
+    }
+    else{
+        insertInBuffer(&dbOp.error, "Unable to delete row in table `%s`", tableName);
+    }
+    free(linesToDelete);
+    free(tableName);
+    return dbOp;
+}
+
+
 DBOp dbInsert(Node sqlNode, Node tableNode){
     DBOp dbOp = createDbOpWithHeader(sqlNode, tableNode);
     char* tableName = getTableName(sqlNode);
@@ -449,7 +757,6 @@ DBOp dbInsert(Node sqlNode, Node tableNode){
     }
     size_t _id = -1;
     FILE *pkFile;
-    // BackupTableFile tableBackup = getTableBackup(tableName);
     if(fileExists(tableName)){
         FILE *table = fopen(tableName, "a+");
         if(table != NULL){

@@ -1,7 +1,3 @@
-//
-// Created by Khan Asfi Reza on 24/10/23.
-//
-
 #ifndef MINISQL_UTILS_H
 #define MINISQL_UTILS_H
 
@@ -24,9 +20,11 @@ int isSelectKeyword(const char *str);
 
 int isInsertKeyword(const char* str);
 int isCreateKeyword(const char* str);
+size_t strToLongInt(const char *str);
 int isUpdateKeyword(const char* str);
 int isDeleteKeyword(const char* str);
-
+int isSymbol(const char *str);
+void replaceString(char *str, size_t idx, size_t endIdx, const char *subString);
 int isDateType(const char* str);
 int isValueFunc(const char* str);
 char* concatStrings(const char *strings[], int count);

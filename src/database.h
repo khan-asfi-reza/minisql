@@ -1,6 +1,3 @@
-//
-// Created by Khan Asfi Reza on 27/10/23.
-//
 #include "stdlib.h"
 #include "lexer.h"
 
@@ -37,6 +34,8 @@ struct {
     int colCount;
 } typedef DBOp ; // DB Operation Return type
 
+
+int deleteLine(const char *filename, const size_t *lines, size_t num);
 
 DBOp createDBOp();
 DBOp createDbOpWithHeader(Node sqlNode, Node tableNode);

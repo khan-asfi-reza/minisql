@@ -9,7 +9,6 @@
 #include "filesystem.h"
 #include "database.h"
 #include "stdbool.h"
-#include <stdio.h>
 #include <time.h>
 #define MAX_LENGTH 32
 
@@ -17,9 +16,9 @@ void printIntroText(){
     printf("\033[0;32m");
     printf("Booting MiniSql - v1\n");
     printf("=====================================================\n");
-    printf("m    m   iii   nnnn    iii   ssss    q q q         l l\n");
+    printf("m    m   iii   nnnn    iii   ssss    q q q       ll\n");
     printf("mm  mm    i    n   n    i    ss      q   q    q  ll   \n");
-    printf("m mm m    i    n   n    i     sss    qqqqq   q    ll   \n");
+    printf("m mm m    i    n   n    i     sss    qqqqq   q   ll   \n");
     printf("m    m    i    n   n    i        ss      q q     ll   \n");
     printf("m    m   iii   n   n   iii    ssss       qq      lllll\n");
     printf("=====================================================\n\n");
@@ -151,21 +150,64 @@ int main() {
             else{
                 TokenRet tokenRet= lexAnalyze(input);
                 Node node = createASTNode(tokenRet);
-                Node *tableNode = getNodeFromList(&tableList, node.table.value);
-                if(isSelectKeyword(node.action.value)){
+                if(node.isInvalid == 0){
+                    Node *tableNode = getNodeFromList(&tableList, node.table.value);
                     if(tableNode != NULL){
-                        DBOp dbOp = dbSelect(node, *tableNode);
-                        printDbOp(&dbOp);
-                        clearDBOp(&dbOp);
+                        if(isSelectKeyword(node.action.value)){
+                            DBOp dbOp = dbSelect(node, *tableNode);
+                            if(dbOp.code == SUCCESS){
+                                printDbOp(&dbOp);
+                            }
+                            else{
+                                printError("%s", dbOp.error);
+                            }
+                            clearDBOp(&dbOp);
+                        }
+                        else if(isInsertKeyword(node.action.value)){
+                            DBOp dbOp = dbInsert(node, *tableNode);
+                            if(dbOp.code == SUCCESS){
+                                printDbOp(&dbOp);
+                            }
+                            else{
+                                printError("%s", dbOp.error);
+                            }
+                            clearDBOp(&dbOp);
+                        }
+                        else if(isDeleteKeyword(node.action.value)){
+                            DBOp dbOp = dbDelete(node, *tableNode);
+                            if(dbOp.code == SUCCESS){
+                                printSuccess("%s", dbOp.successMsg);
+                            }
+                            else{
+                                printError("%s", dbOp.error);
+                            }
+                            clearDBOp(&dbOp);
+                        }
+                        else if(isUpdateKeyword(node.action.value)){
+                            DBOp dbOp = dbUpdate(node, *tableNode);
+                            if(dbOp.code == SUCCESS){
+                                printSuccess("%s", dbOp.successMsg);
+                            }
+                            else{
+                                printError("%s", dbOp.error);
+                            }
+                            clearDBOp(&dbOp);
+                        }
+                        else{
+                            printError("Invalid sql command, command not recognized");
+                        }
                     }
                     else{
-                        printError("Table `%s` doesn't exist", node.table.value);
+                        if(caseInsensitiveCompare(node.action.value, "CREATE") == 0){
+                            DBOp dbOp = dbCreateTable(node);
+                            printSuccess("%s", dbOp.successMsg);
+                            clearDBOp(&dbOp);
+                        }
+                        else{
+                            printError("Table `%s` doesn't exist", node.table.value);
+                        }
                     }
-                }
-                else if(caseInsensitiveCompare(node.action.value, "CREATE") == 0){
-                    DBOp dbOp = dbCreateTable(node);
-                    printSuccess("%s", dbOp.successMsg);
-                    clearDBOp(&dbOp);
+
                 }
                 fflush(stdin);
                 printf(" ");

@@ -1,7 +1,3 @@
-//
-// Created by Khan Asfi Reza on 27/10/23.
-//
-
 #ifndef MINISQL_FILESYSTEM_H
 #define MINISQL_FILESYSTEM_H
 

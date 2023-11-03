@@ -1,13 +1,10 @@
-//
-// Created by Khan Asfi Reza on 24/10/23.
-//
 #include <ctype.h>
 #include "const.h"
-#include "string.h"
-#include "ctype.h"
-#include "stdlib.h"
+#include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <errno.h>
 
 void removeSingleQuotes(char *str) {
     size_t len = strlen(str);
@@ -38,7 +35,12 @@ int isDataType(const char* str) {
     return 0;
 }
 
-
+size_t strToLongInt(const char *str) {
+    char *strPtr;
+    errno = 0;
+    size_t value = strtol(str, &strPtr, 10);
+    return value;
+}
 
 int isBuiltInFunc(const char* str) {
     for (size_t i = 0; i < LEN_BUILT_IN_FUNC; i++) {
@@ -169,6 +171,31 @@ int isNumber(const char *str) {
 int isSpecialPunct(char c){
     return c != '\'' && ispunct(c);
 }
+
+int isSymbol(const char *str){
+    if(strcmp(str, ">=") == 0 || strcmp(str, "<=") == 0 || strcmp(str, "!=") == 0){
+        return 1;
+    }
+    return isSpecialPunct(str[0]);
+}
+
+void replaceString(char *str, size_t idx, size_t endIdx, const char *subString) {
+    size_t len = strlen(str);
+    if (idx >= len) {
+        return;
+    }
+    size_t newLen = strlen(subString);
+    size_t ogSubLen = endIdx - idx + 1;
+    size_t newTotalLen = len - ogSubLen + newLen;
+    char *newStr = realloc(str, newTotalLen + 1);
+    if (newStr == NULL) {
+        return;
+    }
+    str = newStr;
+    memmove(str + idx + newLen, str + idx + ogSubLen, len - idx - ogSubLen + 1);
+    memcpy(str + idx, subString, newLen);
+}
+
 
 void stringToLower(char* str){
     if (str == NULL) return; // safety check

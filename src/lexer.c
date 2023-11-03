@@ -1,6 +1,3 @@
-//
-// Created by Khan Asfi Reza on 20/10/23.
-//
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,7 +29,7 @@ TokenType getTokenType(const char *token){
     else if (isNumber(token)){
         return TOKEN_NUMBER;
     }
-    else if (isSpecialPunct(token[0])){
+    else if (isSymbol(token)){
         return TOKEN_SYMBOL;
     }
     else {
@@ -79,7 +76,7 @@ void printErrorMsg(const char *input, size_t start, const char* extra){
         printf(" ");
     }
     printf("^");
-    printf("\033[0m");
+    printf("\033[0m\n");
 }
 
 TokenRet lexAnalyze(char *input) {
@@ -259,19 +256,22 @@ Node handleWhereClauseError(const char* sql, size_t start){
 }
 
 int isPostColumnSelector(Token action, Token table, Token *tokens, size_t i){
+    if(caseInsensitiveCompare(action.value, "DELETE") == 0){
+        return 0;
+    }
     if(
             isSelectKeyword(action.value) && tokens[i].type == TOKEN_IDENTIFIER ||
             (
-                    caseInsensitiveCompare(action.value, "UPDATE") &&
-                    caseInsensitiveCompare(tokens[i].value, "SET")
+                    caseInsensitiveCompare(action.value, "UPDATE") == 0 &&
+                    caseInsensitiveCompare(tokens[i].value, "SET") == 0
             ) ||
             (
-                    caseInsensitiveCompare(action.value, "CREATE") && table.type != TOKEN_EMPTY &&
+                    caseInsensitiveCompare(action.value, "CREATE") == 0 && table.type != TOKEN_EMPTY &&
                     tokens[i].type == TOKEN_L_PAR
             ) ||
             (
-                    caseInsensitiveCompare(action.value, "INSERT") &&
-                    caseInsensitiveCompare(tokens[i].value, "INTO")
+                    caseInsensitiveCompare(action.value, "INSERT") == 0 &&
+                            tokens[i].type == TOKEN_L_PAR
             )
     )
     {
@@ -311,6 +311,7 @@ Node createASTNode(TokenRet tokenRet){
                 printErrorMsg(tokenRet.sql, cur.start, "");
                 return createInvalidNode();
             }
+
             node.action = cur;
             action = cur;
         }
@@ -319,6 +320,20 @@ Node createASTNode(TokenRet tokenRet){
             if(cur.type == TOKEN_SYMBOL && strcmp(cur.value, "*") == 0 && isSelectKeyword(action.value) == 1){
                 node.isAllCol = 1;
                 colsSet = 1;
+            }
+
+            else if(i == 1 && (isUpdateKeyword(action.value) || isDeleteKeyword(action.value))){
+                if(tokens[i].type != TOKEN_IDENTIFIER){
+                    if(tokens[i+1].type == TOKEN_KEYWORD){
+                        printErrorMsg(tokenRet.sql, tokens[i+1].start, "Invalid table name, SQL Keywords cannot be a table.");
+                    }
+                    else{
+                        printErrorMsg(tokenRet.sql, tokens[i+1].start, "Invalid table name.");
+                    }
+                    return createInvalidNode();
+                }
+                node.table = tokens[i];
+                table = tokens[i];
             }
 
             else if(isPreTableSelectorKeyword(cur.value)){
@@ -550,7 +565,7 @@ Node createASTNode(TokenRet tokenRet){
                     if(tokens[i].type == TOKEN_STRING && i < len - 2){
                         if(tokens[i+1].type != TOKEN_KEYWORD && isLogicalOperator(tokens[i+1].value)){
                             cols_index++;
-                            // TODO: Restriction on column index increase
+
                         }
                     }
 
