@@ -38,9 +38,8 @@ void printError(const char *format, ...);
 char *createBuffer();
 void insertInBuffer(char **buffer, const char *format, ...);
 char *createBufferWithSize(size_t size);
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+size_t getLine(char **restrict line, size_t *restrict size, FILE *restrict file);
+
 
 char* escapeCommas(const char* input);
 size_t max(size_t a, size_t b);

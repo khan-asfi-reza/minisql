@@ -480,3 +480,48 @@ char* escapeCommas(const char* input) {
     result[j] = '\0';
     return result;
 }
+
+/**
+ * Reads each line from a file
+ * @param line Line pointer
+ * @param n Line size
+ * @param file File pointer
+ * @return If the line was successfully captured
+ */
+size_t getLine(char **line, size_t *n, FILE *file) {
+    if (line == NULL || n == NULL || file == NULL) {
+        return -1;
+    }
+    if (*line == NULL) {
+        *n = 128;
+        *line = malloc(*n);
+        if (*line == NULL) {
+            return -1;
+        }
+    }
+    size_t i = 0;
+    while (1) {
+        int c = fgetc(file);
+        if (c == EOF) {
+            if (i == 0) {
+                return -1;
+            }
+            break;
+        }
+        if (i >= *n - 1) {
+            size_t new_size = *n * 2;
+            char *new_ptr = realloc(*line, new_size);
+            if (new_ptr == NULL) {
+                return -1;
+            }
+            *line = new_ptr;
+            *n = new_size;
+        }
+        (*line)[i++] = (char)c;
+        if (c == '\n') {
+            break;
+        }
+    }
+    (*line)[i] = '\0';
+    return i;
+}

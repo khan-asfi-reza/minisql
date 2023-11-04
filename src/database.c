@@ -186,7 +186,7 @@ int matchColumnValue(char* table, size_t colIdx, char* str){
         return -1;
     }
     int lineCount = 0;
-    while (getline(&line, &len, file) != -1) {
+    while (getLine(&line, &len, file) != -1) {
         int start = 0;
         int i = 0;
         size_t commas = 0;
@@ -231,7 +231,7 @@ NodeList loadTables(){
         return nodeList;
     }
     size_t size = 0;
-    while ((getline(&line, &len, file)) != -1) {
+    while ((getLine(&line, &len, file)) != -1) {
         size_t s_len = strlen(line);
         line[s_len-1] = '\0';
         FILE *sqlFile = fopen(line, "r");
@@ -239,7 +239,7 @@ NodeList loadTables(){
         if(sqlFile != NULL){
             size++;
             char *sql = NULL;
-            getline(&sql, &internalLen, sqlFile);
+            getLine(&sql, &internalLen, sqlFile);
             TokenRet tokenRet = lexAnalyze(sql);
             Node node = createASTNode(tokenRet);
             Node *newNode = malloc(sizeof(node) * 1);
@@ -511,7 +511,7 @@ DBOp dbUpdate(Node sqlNode, Node tableNode){
         char *line = NULL;
         size_t len = 0;
         int lineCount = 0;
-        while (getline(&line, &len, tableFile) != -1){
+        while (getLine(&line, &len, tableFile) != -1){
             lineCount++;
             int shouldInsertInRow = 1;
             for (int fil = 0; fil < sNode.filtersLen; ++fil) {
@@ -630,7 +630,7 @@ DBOp dbSelect(Node sqlNode, Node tableNode){
         char *line = NULL;
         size_t len = 0;
         int lineCount = 0;
-        while (getline(&line, &len, tableFile) != -1){
+        while (getLine(&line, &len, tableFile) != -1){
             lineCount++;
             char* rowBuffer = createBuffer();
             int shouldInsertInRow = 1;
@@ -730,7 +730,7 @@ DBOp dbDelete(Node sqlNode, Node tableNode){
         char *line = NULL;
         size_t len = 0;
         int lineCount = 0;
-        while (getline(&line, &len, tableFile) != -1){
+        while (getLine(&line, &len, tableFile) != -1){
             lineCount++;
             int shouldInsertInRow = 1;
             for (int fil = 0; fil < sNode.filtersLen; ++fil) {
