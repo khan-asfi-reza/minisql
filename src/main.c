@@ -9,7 +9,6 @@
 #include "filesystem.h"
 #include "database.h"
 #include "stdbool.h"
-#include <time.h>
 #define MAX_LENGTH 32
 
 void printIntroText(){
@@ -129,7 +128,6 @@ int initialize(){
 
 
 int authenticate(User user, Node *refNode){
-    printf("Login to your account\n");
     char *buffer = createBuffer();
     insertInBuffer(&buffer, "SELECT username, password FROM user where username = '%s';", user.username);
     TokenRet tokenRet= lexAnalyze(
@@ -164,6 +162,7 @@ int main() {
         createUser(userTable);
     }
     while (1) {
+        printf("Login to your account\n");
         User user = getUserInfo(0);
         int auth = authenticate(user, userTable);
         if (auth == 1) {
