@@ -202,7 +202,7 @@ int isNumber(const char *str) {
         if (*str == '.') {
             if (decimalFound) {
                 return 0;
-            };
+            }
             decimalFound = 1;
             str++;
             continue;
@@ -451,7 +451,7 @@ void clearBuffer(char **buffer) {
  */
 size_t max(size_t a, size_t b){
     return a > b ? a : b;
-};
+}
 
 /**
  * If a sql string type, value has ',' inside then escape the commas with '\\,'
