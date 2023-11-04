@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <stddef.h>
 
 /**
  * Removes single quote `'` from a string pointer

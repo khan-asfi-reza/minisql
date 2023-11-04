@@ -1,5 +1,4 @@
-
-#include <ctype.h>
+#include <stddef.h>
 
 const char *const KEYWORDS[] = {
         "SELECT", "INSERT", "UPDATE", "DELETE", "CREATE",

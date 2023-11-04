@@ -1,3 +1,7 @@
+#include <stdio.h>
+#include <stddef.h>
+#include <errno.h>
+
 #ifndef MINISQL_FILESYSTEM_H
 #define MINISQL_FILESYSTEM_H
 

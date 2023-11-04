@@ -1,3 +1,12 @@
+#include <ctype.h>
+#include "const.h"
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <errno.h>
+#include <stddef.h>
+
 #ifndef MINISQL_UTILS_H
 #define MINISQL_UTILS_H
 

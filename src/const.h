@@ -1,7 +1,9 @@
+#include <ctype.h>
+#include <stddef.h>
+
 #ifndef MINISQL_CONST_H
 #define MINISQL_CONST_H
 
-#include <ctype.h>
 extern const char *const KEYWORDS[];
 extern const size_t LEN_KEYWORDS;
 extern const size_t LEN_DATA_TYPES;

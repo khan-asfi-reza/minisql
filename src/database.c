@@ -1,12 +1,13 @@
 #include "lexer.h"
-#include "stdlib.h"
-#include "stdio.h"
-#include "string.h"
 #include "utils.h"
 #include "const.h"
 #include "filesystem.h"
 #include "database.h"
 #include <time.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 char* getTableName(Node node){
     const char* tableStrList[] = {DATA_DIR, "/table_", node.table.value};
