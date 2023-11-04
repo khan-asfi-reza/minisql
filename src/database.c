@@ -449,6 +449,7 @@ int deleteLine(const char *filename, const size_t *lines, size_t size) {
 
 int filterValue(Column filter, const char* value){
     int shouldInsertInRow = 1;
+    removeSingleQuotes(filter.valueToken.value);
     if(filter.valueToken.type == TOKEN_NUMBER && isNumber(value)){
         size_t val = strToLongInt(value);
         size_t cmpVal = strToLongInt(filter.valueToken.value);
@@ -642,6 +643,7 @@ DBOp dbSelect(Node sqlNode, Node tableNode){
     FILE *tableFile = fopen(tableName, "r");
     char **rows = malloc(sizeof(char ) * 1);
     size_t rowCount = 0;
+
     if(tableFile != NULL){
         char *line = NULL;
         size_t len = 0;
@@ -650,60 +652,71 @@ DBOp dbSelect(Node sqlNode, Node tableNode){
             lineCount++;
             char* rowBuffer = createBuffer();
             int shouldInsertInRow = 1;
-            for (int col = 0; col < sNode.colsLen; ++col) {
-                int col_idx = getColumnIndex(&tableNode, sNode.columns[col].columnToken.value);
+            for (size_t fil = 0; fil < sqlNode.filtersLen; ++fil) {
                 size_t start = 0;
                 size_t i = 0;
                 size_t commas = 0;
+                int col_idx = getColumnIndex(&tableNode, sqlNode.filters[fil].columnToken.value);
                 while (1){
                     if((i>0 && line[i] == ',' && line[i-1] != '\\') || line[i] == '\n'){
                         commas++;
-                        char *value = createBufferWithSize(i - start);
-                        strncpy(value, line + start, i - start);
-                        value[i - start] = '\0';
-                        int toFindColumn = (int)commas - 2;
-                        if(toFindColumn >= 0){
-                            Column fCol = tableNode.columns[toFindColumn];
-                            int filterColExist = getFilterIndex(&sqlNode, fCol.columnToken.value);
-                            if(filterColExist != -1){
-                                Column filter = sqlNode.filters[filterColExist];
-                                if(filter.valueToken.value != NULL){
-                                    removeSingleQuotes(filter.valueToken.value);
-                                    shouldInsertInRow = filterValue(filter, value);
-                                }
-                                else{
-                                    dbOp.code = FAIL;
-                                    clearBuffer(&dbOp.result);
-                                    insertInBuffer(&dbOp.error, "Invalid filter statement");
-                                    return dbOp;
-                                }
-                            }
-                        }
-
-                        if(shouldInsertInRow == 1 && commas == col_idx + 2){
-                            insertInBuffer(&rowBuffer, "%s", value);
-                            dbOp.maxColSpace = getMaxColSize(dbOp.maxColSpace, strlen(value));
-                            clearBuffer(&value);
+                        if(commas - 2 == col_idx){
+                            char *value = createBufferWithSize(i - start);
+                            strncpy(value, line + start, i - start);
+                            shouldInsertInRow = filterValue(sqlNode.filters[fil], value);
+                            free(value);
                             break;
                         }
                         else{
                             start = i + 1;
                         }
-                        clearBuffer(&value);
-                        if(shouldInsertInRow == 0){
+                        if(line[i] == '\n'){
                             break;
                         }
                     }
                     i++;
                 }
-                if(shouldInsertInRow == 1 && col != sNode.colsLen - 1){
-                    insertInBuffer(&rowBuffer, ",");
-                }
-                if(shouldInsertInRow == 0){
-                    break;
+                if(sqlNode.filters[fil].nextLogicalOp.value != NULL && caseInsensitiveCompare(sqlNode.filters[fil].nextLogicalOp.value, "AND") == 0){
+                    if(shouldInsertInRow == 0){
+                        break;
+                    }
+                }else{
+                    if(shouldInsertInRow == 1){
+                        break;
+                    }
                 }
             }
             if(shouldInsertInRow == 1){
+                for (int col = 0; col < sNode.colsLen; ++col) {
+                    int col_idx = getColumnIndex(&tableNode, sNode.columns[col].columnToken.value);
+                    size_t start = 0;
+                    size_t i = 0;
+                    size_t commas = 0;
+                    while (1){
+                        if((i>0 && line[i] == ',' && line[i-1] != '\\') || line[i] == '\n'){
+                            commas++;
+                            char *value = createBufferWithSize(i - start);
+                            strncpy(value, line + start, i - start);
+                            value[i - start] = '\0';
+                            if(commas == col_idx + 2){
+                                insertInBuffer(&rowBuffer, "%s", value);
+                                dbOp.maxColSpace = getMaxColSize(dbOp.maxColSpace, strlen(value));
+                                clearBuffer(&value);
+                            }
+                            else{
+                                start = i + 1;
+                            }
+                            clearBuffer(&value);
+                            if(line[i] == '\n'){
+                                break;
+                            }
+                        }
+                        i++;
+                    }
+                    if(col != sNode.colsLen - 1){
+                        insertInBuffer(&rowBuffer, ",");
+                    }
+                }
                 insertInBuffer(&rowBuffer, "\n");
                 insertInBuffer(&dbOp.result, "%s", rowBuffer);
                 rows[rowCount] = createBuffer();
@@ -720,9 +733,8 @@ DBOp dbSelect(Node sqlNode, Node tableNode){
                     free(line);
                     return dbOp;
                 }
-
+                clearBuffer(&rowBuffer);
             }
-            clearBuffer(&rowBuffer);
         }
         fclose(tableFile);
         dbOp.lineCount += lineCount;
