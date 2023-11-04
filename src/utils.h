@@ -34,12 +34,9 @@ int isUpdateKeyword(const char* str);
 int isDeleteKeyword(const char* str);
 int isSymbol(const char *str);
 void replaceString(char *str, size_t idx, size_t endIdx, const char *subString);
-int isDateType(const char* str);
 int isValueFunc(const char* str);
 char* concatStrings(const char *strings[], int count);
 
-
-int isInStringArray(char* array[], size_t  arraySize, char* key);
 
 void printSuccess(const char *format, ...);
 void printError(const char *format, ...);
@@ -52,6 +49,7 @@ size_t getLine(char **restrict line, size_t *restrict size, FILE *restrict file)
 
 char* escapeCommas(const char* input);
 size_t max(size_t a, size_t b);
+size_t isEven(size_t a);
 void clearBuffer(char **buffer);
 #endif
 //MINISQL_UTILS_H

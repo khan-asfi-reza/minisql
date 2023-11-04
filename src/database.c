@@ -9,45 +9,89 @@
 #include <stdio.h>
 #include <string.h>
 
-char* getTableName(Node node){
-    const char* tableStrList[] = {DATA_DIR, "/table_", node.table.value};
-    char* tableFullName = concatStrings(tableStrList, 3);
-    return tableFullName;
-}
-
-char* getTableSQLName(Node node){
-    const char* tableSqlStrList[] = {DATA_DIR, "/table_", node.table.value, "_sql"};
-    char* tableSql = concatStrings(tableSqlStrList, 4);
-    return tableSql;
-}
-
-char* getTablePkName(Node node){
-    const char* tablePkList[] = {DATA_DIR, "/table_", node.table.value, "_pk"};
-    char* tablePk = concatStrings(tablePkList, 4);
-    return tablePk;
-}
-
-
+/**
+ * Identify the maximum space a column is taking while printing the table
+ * @param a
+ * @param b
+ * @return Max column size
+ */
 size_t getMaxColSize(size_t a, size_t b){
     size_t c = max(a,b);
-    if((c & 1) == 0){
+    // Checking for even if the number is even add one to adjust space
+    if(isEven(a)){
         c = c+1;
     }
-    if(c < 13){
-        return 13;
+    // Minimum space by a column in the input
+    if(c < MIN_COL_SIZE){
+        return MIN_COL_SIZE;
     }
+    // Maximum space a column can take in the output
     if(c > MAX_COL_SIZE){
         return MAX_COL_SIZE;
     }
     return c;
 }
 
+/**
+ * Data file is where the data stored for a table
+ * Data file's name format "DATA_DIRECTORY/table_(table_name)"
+ * @param node SQL AST Node
+ * @return name of the data file
+ */
+char* getTableDataFileName(Node node){
+    char* buffer = createBuffer();
+    insertInBuffer(&buffer, "%s/table_%s", DATA_DIR, node.table.value);
+    return buffer;
+}
+
+/**
+ * The create table sql is stored to get the reference of the table,
+ * To identify the table's column and index field.
+ * Data file's name format "DATA_DIRECTORY/table_(table_name)_sql"
+ * @param node SQL AST Node
+ * @return name of the data sql file
+ */
+char* getTableSQLName(Node node){
+    char* buffer = createBuffer();
+    insertInBuffer(&buffer, "%s/table_%s_sql", DATA_DIR, node.table.value);
+    return buffer;
+}
+
+
+/**
+ * The Primary key number is stored to get the last used id/serial of the table,
+ * Data file's name format "DATA_DIRECTORY/table_(table_name)_pk"
+ * @param node SQL AST Node
+ * @return name of the data file
+ */
+char* getTablePkName(Node node){
+    char* buffer = createBuffer();
+    insertInBuffer(&buffer, "%s/table_%s_pk", DATA_DIR, node.table.value);
+    return buffer;
+}
+
+/**
+ * Storage to store all the table sql file name
+ * @return name of the data file
+ */
+char* getTableConfFileName(){
+    char* buffer = createBuffer();
+    insertInBuffer(&buffer, "%s/.table", DATA_DIR);
+    return buffer;
+}
+
+
+/**
+ * Creates an empty db operation object
+ * @return Empty db operation
+ */
 DBOp createDBOp(){
     DBOp dbOperation;
     dbOperation.code = SUCCESS;
     dbOperation.successMsg = createBuffer();
     dbOperation.error = createBuffer();
     dbOperation.result = createBuffer();
+    dbOperation.action = createBuffer();
     dbOperation.rows = malloc(sizeof(char ) * 1);
     dbOperation.rowCount = 0;
     dbOperation.maxColSpace = 5;
@@ -56,6 +100,10 @@ DBOp createDBOp(){
     return dbOperation;
 }
 
+/**
+ * Frees allocated memory for a db operation
+ * @param dbOp db operation object
+ */
 void clearDBOp(DBOp *dbOp){
     if(dbOp->error != NULL){
         free(dbOp->error);
@@ -66,29 +114,61 @@ void clearDBOp(DBOp *dbOp){
     if(dbOp->successMsg != NULL){
         free(dbOp->successMsg);
     }
+    if(dbOp->action != NULL){
+        free(dbOp->action);
+    }
 }
 
+
+/**
+ * Creates default value by a default function
+ * @return Default value
+ */
+char* defaultValue(Token token){
+    // Default function = NOW
+    // Generates current time while creation of the data
+    if(caseInsensitiveCompare(token.value, "NOW") == 0){
+        // Allocate memory for current timestamp
+        time_t now;
+        struct tm *utc;
+        char *dateTimeStr;
+        dateTimeStr = createBufferWithSize(sizeof(char) * 100);
+        if (dateTimeStr == NULL) {
+            printError("Memory allocation failed while creating timestamp.\n");
+            return "";
+        }
+        time(&now);
+        // Get utc time from now time
+        utc = gmtime(&now);
+        // Format the time
+        if (strftime(dateTimeStr, 100, "%Y-%m-%d %H:%M:%S GMT+0", utc) == 0) {
+            printError("Failed to format date-time string.\n");
+            free(dateTimeStr);
+            return "";
+        }
+        return dateTimeStr;
+    }
+    return "1";
+}
+
+/**
+ * Creates a table
+ * @return DBOp
+ */
 DBOp dbCreateTable(Node sqlNode){
 
     DBOp dbOperation = createDBOp();
-
-    FILE *tableFile = NULL, *tableSqlFile = NULL;
-    char* tableFullName = getTableName(sqlNode);
+    FILE *tableFile = NULL, *tableSqlFile = NULL, *tableConfig = NULL;
+    char* tableFullName = getTableDataFileName(sqlNode);
     char* tableSql = getTableSQLName(sqlNode);
-
-    const char* tableConf[] = {DATA_DIR, "/", ".table"};
-    char* tableConfStr = concatStrings(tableConf, 3);
-    FILE *tableConfig = NULL;
+    char* tableConfStr = getTableConfFileName();
     tableConfig = fopen(tableConfStr, "a");
-
     char *pKeyFile;
-
     if(fileExists(tableFullName) || fileExists(tableSql)){
         insertInBuffer(&dbOperation.error, "Table `%s` already exists", sqlNode.table.value);
         dbOperation.code = FAIL;
         return dbOperation;
     }
-
     if(dbOperation.code == SUCCESS){
         if(tableConfig == NULL){
             insertInBuffer(&dbOperation.error, "Database Corrupted", sqlNode.table.value);
@@ -100,9 +180,7 @@ DBOp dbCreateTable(Node sqlNode){
             fputs("\n", tableConfig);
             fclose(tableConfig);
         }
-
     }
-
     if(dbOperation.code == SUCCESS){
         tableFile = fopen(tableFullName, "a");
         tableSqlFile = fopen(tableSql, "a+");
@@ -132,31 +210,6 @@ DBOp dbCreateTable(Node sqlNode){
     return dbOperation;
 }
 
-
-
-char* defaultValue(Token token){
-    if(caseInsensitiveCompare(token.value, "NOW") == 0){
-        time_t now;
-        struct tm *utc;
-        char *dateTimeStr;
-        dateTimeStr = (char *)malloc(100 * sizeof(char));
-        if (dateTimeStr == NULL) {
-            printError("Memory allocation failed while creating timestamp.\n");
-            return "";
-        }
-        time(&now);
-        int offsetHours = 1;
-        now += offsetHours * 3600;
-        utc = gmtime(&now);
-        if (strftime(dateTimeStr, 100, "%Y-%m-%d %H:%M:%S GMT+1", utc) == 0) {
-            printError("Failed to format date-time string.\n");
-            free(dateTimeStr);
-            return "";
-        }
-        return dateTimeStr;
-    }
-    return "1";
-}
 
 int getColumnIndex(Node* node, char* column){
     for (int i = 0; i < node->colsLen ; i++) {
@@ -255,46 +308,6 @@ NodeList loadTables(){
     return nodeList;
 }
 
-struct {
-    char* backup;
-    long fileSize;
-} typedef BackupTableFile;
-
-
-BackupTableFile getTableBackup(char* tableName){
-    BackupTableFile btf = {};
-    FILE *file = fopen(tableName, "r+");
-    if (!file) {
-        perror("Failed to open file");
-        return btf;
-    }
-
-    fseek(file, 0, SEEK_END);
-    long file_size = ftell(file);
-    char *backup = malloc(file_size);
-
-    if (!backup) {
-        perror("Failed to allocate memory");
-        fclose(file);
-        return btf;
-    }
-    fseek(file, 0, SEEK_SET);
-    fread(backup, 1, file_size, file);
-    btf.backup = backup;
-    btf.fileSize = file_size;
-    fclose(file);
-    return btf;
-}
-
-void restoreTable(char* tableName, BackupTableFile tableBackup) {
-    FILE *file = fopen(tableName, "w");
-    if(file != NULL){
-        fseek(file, 0, SEEK_SET);
-        fwrite(tableBackup.backup, 1, tableBackup.fileSize, file);
-    }
-    fclose(file);
-}
-
 DBOp createDbOpWithHeader(Node sqlNode, Node tableNode){
     DBOp header = createDBOp();
     Node sNode = sqlNode;
@@ -329,6 +342,8 @@ DBOp createDbOpWithHeader(Node sqlNode, Node tableNode){
     }
     header.lineCount = 1;
     header.colCount = i;
+    header.action = createBufferWithSize(strlen(sNode.action.value));
+    insertInBuffer(&header.action, "%s", sqlNode.action.value);
     return header;
 }
 
@@ -503,7 +518,7 @@ DBOp dbUpdate(Node sqlNode, Node tableNode){
     DBOp dbOp = createDbOpWithHeader(sqlNode, tableNode);
 
     size_t upCount = 0;
-    char *tableName = getTableName(sqlNode);
+    char *tableName = getTableDataFileName(sqlNode);
     char* tBuffer = createBuffer();
     FILE *tableFile = fopen(tableName, "r+");
     char **rows = malloc(sizeof(char ) * 1);
@@ -623,7 +638,7 @@ DBOp dbSelect(Node sqlNode, Node tableNode){
         sNode = tableNode;
     }
     DBOp dbOp = createDbOpWithHeader(sqlNode, tableNode);
-    char *tableName = getTableName(sqlNode);
+    char *tableName = getTableDataFileName(sqlNode);
     FILE *tableFile = fopen(tableName, "r");
     char **rows = malloc(sizeof(char ) * 1);
     size_t rowCount = 0;
@@ -725,7 +740,7 @@ DBOp dbDelete(Node sqlNode, Node tableNode){
     DBOp dbOp = createDbOpWithHeader(sqlNode, tableNode);
     size_t *linesToDelete = malloc(sizeof(size_t) * 1);
     size_t lIdx = 0;
-    char *tableName = getTableName(sqlNode);
+    char *tableName = getTableDataFileName(sqlNode);
     FILE *tableFile = fopen(tableName, "r");
     if(tableFile != NULL){
         char *line = NULL;
@@ -793,7 +808,7 @@ DBOp dbDelete(Node sqlNode, Node tableNode){
 
 DBOp dbInsert(Node sqlNode, Node tableNode){
     DBOp dbOp = createDbOpWithHeader(sqlNode, tableNode);
-    char* tableName = getTableName(sqlNode);
+    char* tableName = getTableDataFileName(sqlNode);
     if(dbOp.code != SUCCESS){
         return dbOp;
     }
@@ -940,21 +955,59 @@ void printTables(NodeList nodeList){
     }
 }
 
+
+DBOp execSQL(char* input, NodeList *tableList){
+    TokenRet tokenRet = lexAnalyze(input);
+    Node node = createASTNode(tokenRet);
+    if(node.isInvalid == 0){
+        Node *tableNode = getNodeFromList(tableList, node.table.value);
+        if(tableNode != NULL){
+            if(isSelectKeyword(node.action.value)){
+                DBOp dbOp = dbSelect(node, *tableNode);
+                return dbOp;
+            }
+            else if(isInsertKeyword(node.action.value)){
+                DBOp dbOp = dbInsert(node, *tableNode);
+                return dbOp;
+            }
+            else if(isDeleteKeyword(node.action.value)){
+                DBOp dbOp = dbDelete(node, *tableNode);
+                return dbOp;
+            }
+            else if(isUpdateKeyword(node.action.value)){
+                DBOp dbOp = dbUpdate(node, *tableNode);
+                return dbOp;
+            }
+            else if(isCreateKeyword(node.action.value)){
+                printf("Info: Table `%s` exists", node.table.value);
+            }
+        }
+        else{
+            if(isCreateKeyword(node.action.value)){
+                DBOp dbOp = dbCreateTable(node);
+                *tableList = loadTables();
+                return dbOp;
+            }
+            else{
+                printError("Table `%s` doesn't exist", node.table.value);
+            }
+        }
+
+    }
+    return createDBOp();
+}
+
+
 void printDbOp(DBOp *dbOp){
     char* result = dbOp->result;
     size_t start = 0;
-    size_t pIdx = 0;
-    size_t inLineIdx;
-    int isInLine = 0;
     size_t mSpace = dbOp->maxColSpace;
     int isEvenTOff;
     for (int i = 0; i < dbOp->colCount * mSpace + dbOp->colCount; ++i) {
         printf("_");
     }
     printf("\n");
-    size_t prevPIdx = pIdx;
     for (int i = 0; i < strlen(result); ++i) {
-
         if((i>0 && result[i] == ',' && result[i-1] != '\\') || result[i] == '\n'){
             isEvenTOff = 0;
             size_t t_off = (i - start);
@@ -968,70 +1021,21 @@ void printDbOp(DBOp *dbOp){
             } else {
                 offset = mSpace - t_off;
             }
-
-            if(offset == 0){
-                isInLine = 1;
-                inLineIdx = prevPIdx;
-            }
-
-            if(isInLine == 0){
-                for (int j = 0; j < offset/2; ++j) {
-                    printf(" ");
-                    pIdx++;
-                }
-                if(isEvenTOff == 1){
-                    printf(" ");
-                    pIdx++;
-                }
-                for (size_t l = start; l < i; ++l) {
-                    printf("%c", result[l]);
-                    pIdx++;
-                }
-                for (int j = 0; j < offset/2; ++j) {
-                    printf(" ");
-                    pIdx++;
-                }
-            }
-            else{
-                size_t lIdx = inLineIdx;
+            for (int j = 0; j < offset/2; ++j) {
                 printf(" ");
-                for (size_t f = start; f < i; ++f) {
-                    if(lIdx >= inLineIdx && lIdx < inLineIdx + mSpace - 2){
-                        printf("%c", result[f]);
-                        lIdx++;
-                    }
-                    else{
-                        size_t xCtr = 0;
-                        printf(" |\n");
-                        for (int j = 0; j < inLineIdx ; ++j) {
-                            if (xCtr == mSpace){
-                                printf("|");
-                                xCtr = -1;
-                            }
-                            else{
-                                printf(" ");
-                            }
-                            xCtr++;
-
-                        }
-                        lIdx = inLineIdx;
-                        f--;
-                        printf(" ");
-                    }
-                }
-                while(lIdx >= inLineIdx && lIdx < inLineIdx + mSpace - 1){
-                    printf(" ");
-                    lIdx++;
-                }
-                isInLine = 0;
+            }
+            if(isEvenTOff == 1){
+                printf(" ");
+            }
+            for (size_t l = start; l < i; ++l) {
+                printf("%c", result[l]);
+            }
+            for (int j = 0; j < offset/2; ++j) {
+                printf(" ");
             }
             printf("|");
-            pIdx++;
-            prevPIdx = pIdx;
             if(result[i] == '\n'){
                 printf("\n");
-                pIdx = 0;
-                isInLine = 0;
                 for (int x = 0; x < dbOp->colCount * mSpace + dbOp->colCount; ++x) {
                     printf("-");
                 }
@@ -1070,3 +1074,17 @@ char* getRowValue(char** rows, size_t rowIdx, size_t columnIdx, size_t rowCount)
     }
     return NULL;
 }
+
+int doesTableExist(char* table){
+    int exists = 0;
+    NodeList tables = loadTables();
+    Node *node = getNodeFromList(&tables, table);
+    if(node != NULL){
+        exists = 1;
+        free(node);
+        free(tables.nodes);
+        free(tables.tables);
+    }
+    return exists;
+}
+

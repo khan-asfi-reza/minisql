@@ -224,7 +224,7 @@ int isNumber(const char *str) {
  *
  */
 int isSpecialPunct(char c){
-    return c != '\'' && ispunct(c);
+    return c != '\'' && ispunct(c) && c != '_';
 }
 
 /**
@@ -452,6 +452,15 @@ void clearBuffer(char **buffer) {
  */
 size_t max(size_t a, size_t b){
     return a > b ? a : b;
+}
+
+/**
+ * If a number is even or odd
+ * @param a
+ * @return True of False
+ */
+size_t isEven(size_t a){
+    return (a & 1) == 0;
 }
 
 /**

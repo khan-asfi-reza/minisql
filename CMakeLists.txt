@@ -9,4 +9,4 @@ add_executable(minisql src/main.c
         src/database.c
         src/filesystem.c
         src/io.c
-        src/util.c)
+        src/utils.c)

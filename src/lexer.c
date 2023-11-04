@@ -364,6 +364,7 @@ Node createASTNode(TokenRet tokenRet){
                             return createInvalidNode();
                         }
                         node.columns[cols_index].columnToken = tokens[i];
+                        node.columns[cols_index].isUnique = 0;
                         prevType = TOKEN_IDENTIFIER;
                     }
 
@@ -436,6 +437,7 @@ Node createASTNode(TokenRet tokenRet){
                         prevType = tokens[i].type;
                     }
                     i++;
+
                 }
                 if(isInsert){
                     i++;

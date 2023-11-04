@@ -128,9 +128,8 @@ int initialize(){
 }
 
 
-int authenticate(Node *refNode){
+int authenticate(User user, Node *refNode){
     printf("Login to your account\n");
-    User user = getUserInfo(0);
     char *buffer = createBuffer();
     insertInBuffer(&buffer, "SELECT username, password FROM user where username = '%s';", user.username);
     TokenRet tokenRet= lexAnalyze(
@@ -154,110 +153,57 @@ int authenticate(Node *refNode){
 }
 
 
+
 int main() {
 
     printIntroText();
     int setup = initialize();
     NodeList tableList = loadTables();
     Node *userTable = getNodeFromList(&tableList, "user");
-    if(setup == 0){
+    if (setup == 0) {
         createUser(userTable);
     }
-    while (1){
-        int auth = authenticate(userTable);
-        if(auth == 1){
+    while (1) {
+        User user = getUserInfo(0);
+        int auth = authenticate(user, userTable);
+        if (auth == 1) {
             printSuccess("Logged in successfully");
             break;
-        }
-        else if(auth == -1){
+        } else if (auth == -1) {
             printError("User doesn't exist");
-        }
-        else{
+        } else {
             printError("User password doesn't match");
         }
     }
     while (1) {
         printf("\n$>> ");
         char *input = handleInput();
-        if(input != NULL){
-            if(caseInsensitiveCompare(input, "quit;") == 0){
+        if (input != NULL) {
+            if (caseInsensitiveCompare(input, "quit;") == 0) {
                 exit(0);
-            }
-            else if(caseInsensitiveCompare(input, "create user;") == 0){
+            } else if (caseInsensitiveCompare(input, "create user;") == 0) {
                 createUser(userTable);
-            }
-            else if(caseInsensitiveCompare(input, "list tables;") == 0){
+            } else if (caseInsensitiveCompare(input, "list tables;") == 0) {
                 printTables(tableList);
                 tableList = loadTables();
-            }
-            else{
-                TokenRet tokenRet = lexAnalyze(input);
-                Node node = createASTNode(tokenRet);
-                if(node.isInvalid == 0){
-                    Node *tableNode = getNodeFromList(&tableList, node.table.value);
-                    if(tableNode != NULL){
-                        if(isSelectKeyword(node.action.value)){
-                            DBOp dbOp = dbSelect(node, *tableNode);
-                            if(dbOp.code == SUCCESS){
-                                printDbOp(&dbOp);
-                            }
-                            else{
-                                printError("%s", dbOp.error);
-                            }
-                            clearDBOp(&dbOp);
-                        }
-                        else if(isInsertKeyword(node.action.value)){
-                            DBOp dbOp = dbInsert(node, *tableNode);
-                            if(dbOp.code == SUCCESS){
-                                printDbOp(&dbOp);
-                            }
-                            else{
-                                printError("%s", dbOp.error);
-                            }
-                            clearDBOp(&dbOp);
-                        }
-                        else if(isDeleteKeyword(node.action.value)){
-                            DBOp dbOp = dbDelete(node, *tableNode);
-                            if(dbOp.code == SUCCESS){
-                                printSuccess("%s", dbOp.successMsg);
-                            }
-                            else{
-                                printError("%s", dbOp.error);
-                            }
-                            clearDBOp(&dbOp);
-                        }
-                        else if(isUpdateKeyword(node.action.value)){
-                            DBOp dbOp = dbUpdate(node, *tableNode);
-                            if(dbOp.code == SUCCESS){
-                                printSuccess("%s", dbOp.successMsg);
-                            }
-                            else{
-                                printError("%s", dbOp.error);
-                            }
-                            clearDBOp(&dbOp);
-                        }
-                        else{
-                            printError("Invalid sql command, command not recognized");
-                        }
-                    }
-                    else{
-                        if(caseInsensitiveCompare(node.action.value, "CREATE") == 0){
-                            DBOp dbOp = dbCreateTable(node);
-                            printSuccess("%s", dbOp.successMsg);
-                            clearDBOp(&dbOp);
-                            tableList = loadTables();
-                        }
-                        else{
-                            printError("Table `%s` doesn't exist", node.table.value);
-                        }
+            } else {
+                DBOp dbOp = execSQL(input, &tableList);
+                if (dbOp.code == SUCCESS) {
+                    printSuccess("%s", dbOp.successMsg);
+                    if(isSelectKeyword(dbOp.action) || isInsertKeyword(dbOp.action)){
+                        printDbOp(&dbOp);
                     }
 
+                } else {
+                    printError("%s", dbOp.error);
                 }
+                clearDBOp(&dbOp);
+                fflush(stdin);
+                printf(" ");
             }
-            fflush(stdin);
-            printf(" ");
+
         }
 
     }
-
 }
+
