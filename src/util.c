@@ -6,6 +6,13 @@
 #include <stdarg.h>
 #include <errno.h>
 
+/**
+ * Removes single quote `'` from a string pointer
+ *
+ * @param str String pointer
+ * @return None
+ *
+ */
 void removeSingleQuotes(char *str) {
     size_t len = strlen(str);
     if (len >= 2 && str[0] == '\'' && str[len - 1] == '\'') {
@@ -14,7 +21,15 @@ void removeSingleQuotes(char *str) {
     }
 }
 
-
+/**
+ * Performs strcmp but case insensitive , 'a', 'A' will return 0
+ *
+ * @param str1 Comparable string
+ * @param str2 Comparable string
+ * @return Integer value 0 or any integer,
+ * 0 = the the characters are same
+ *
+ */
 int caseInsensitiveCompare(const char *str1, const char *str2) {
     while (*str1 && *str2) {
         if (toupper((unsigned char)*str1) != toupper((unsigned char)*str2)) {
@@ -26,8 +41,16 @@ int caseInsensitiveCompare(const char *str1, const char *str2) {
     return *str1 - *str2;
 }
 
+
+/**
+ * Checks if a string is in CONST `DATA_TYPES`
+ * Checks if a string is an SQL data type, data types: varchar, text, number, integer, boolean etc
+ * @param str Comparable string
+ * @return whether or not the string is in the array of DATA_TYPES;
+ *
+ */
 int isDataType(const char* str) {
-    for (size_t i = 0; i < LEN_DATA_TYPES; i++) {
+    for (int i = 0; i < LEN_DATA_TYPES; i++) {
         if (caseInsensitiveCompare(str, DATA_TYPES[i]) == 0) {
             return 1;
         }
@@ -35,6 +58,13 @@ int isDataType(const char* str) {
     return 0;
 }
 
+/**
+ * Converts a string number to a unsigned long long int number
+ * String "12" will be converted to -> 12 (decimal)
+ * @param str String number
+ * @return Decimal number extracted from the string number
+ *
+ */
 size_t strToLongInt(const char *str) {
     char *strPtr;
     errno = 0;
@@ -42,8 +72,16 @@ size_t strToLongInt(const char *str) {
     return value;
 }
 
+
+/**
+ * Returns 0 or 1 based on string is in CONST `BUILT_IN_FUNC` or not
+ * Checks if a string is an sql built in function
+ * @param str Comparable string
+ * @return whether or not the string is in the array of BUILT_IN_FUNC
+ *
+ */
 int isBuiltInFunc(const char* str) {
-    for (size_t i = 0; i < LEN_BUILT_IN_FUNC; i++) {
+    for (int i = 0; i < LEN_BUILT_IN_FUNC; i++) {
         if (caseInsensitiveCompare(str, BUILT_IN_FUNC[i]) == 0) {
             return 1;
         }
@@ -52,8 +90,15 @@ int isBuiltInFunc(const char* str) {
 }
 
 
+/**
+ * Returns 0 or 1 based on string is in CONST `VALUE_FUNC` or not
+ * Checks if a string is a default value generator function for sql
+ * @param str Comparable string
+ * @return whether or not the string is in the array of VALUE_FUNC;
+ *
+ */
 int isValueFunc(const char* str) {
-    for (size_t i = 0; i < VALUE_FUNC_LEN; i++) {
+    for (int i = 0; i < VALUE_FUNC_LEN; i++) {
         if (caseInsensitiveCompare(str, VALUE_FUNC[i]) == 0) {
             return 1;
         }
@@ -62,9 +107,15 @@ int isValueFunc(const char* str) {
 }
 
 
-
+/**
+ * Returns 0 or 1 based on string is in CONST `KEYWORDS` or not
+ * Checks if a string is an sql keyword or not
+ * @param str Comparable string
+ * @return whether or not the string is in the array of KEYWORD
+ *
+ */
 int isKeyword(const char* str) {
-    for (size_t i = 0; i < LEN_KEYWORDS; i++) {
+    for (int i = 0; i < LEN_KEYWORDS; i++) {
         if (caseInsensitiveCompare(str, KEYWORDS[i]) == 0) {
             return 1;
         }
@@ -72,8 +123,18 @@ int isKeyword(const char* str) {
     return 0;
 }
 
+
+/**
+ * Returns 0 or 1 based on string is in CONST `PRE_TB_SELECTOR_KEYWORDS` or not
+ * A pre table selector checks if the argument string is an sql table selector keyword,
+ * Example: `SELECT * FROM TABLE_1` here `FROM` is a table selector, by this FROM keyword
+ * it can be determined that any identifier next to a table selector points to a database table
+ * @param str Comparable string
+ * @return whether or not the string is in the array of PRE_TB_SELECTOR_KEYWORDS
+ *
+ */
 int isPreTableSelectorKeyword(const char* str) {
-    for (size_t i = 0; i < LEN_PRE_TB_SELECTOR_KEYWORDS; i++) {
+    for (int i = 0; i < LEN_PRE_TB_SELECTOR_KEYWORDS; i++) {
         if (caseInsensitiveCompare(str, PRE_TB_SELECTOR_KEYWORDS[i]) == 0) {
             return 1;
         }
@@ -82,6 +143,14 @@ int isPreTableSelectorKeyword(const char* str) {
 }
 
 
+/**
+ * Returns 0 or 1 based on string is in CONST `LOGICAL_OP` or not
+ * Logical connection between two filter statement, AND and OR
+ * Note: This functionality not yet implemented
+ * @param str Comparable string
+ * @return whether or not the string is in the array of LOGICAL_OP
+ *
+ */
 int isLogicalOperator(const char* str) {
     for (size_t i = 0; i < LEN_LOGICAL_OP; i++) {
         if (caseInsensitiveCompare(str, LOGICAL_OP[i]) == 0) {
@@ -92,43 +161,14 @@ int isLogicalOperator(const char* str) {
 }
 
 
-int isDateType(const char* str) {
-    for (size_t i = 0; i < LEN_LOGICAL_OP; i++) {
-        if (caseInsensitiveCompare(str, DATE_TYPES[i]) == 0) {
-            return 1;
-        }
-    }
-    return 0;
-}
 
-
-
-int isFilterKeyword(const char* str){
-    return caseInsensitiveCompare(str, FILTER_KEYWORD) == 0;
-}
-
-
-int isInStringArray(char**array, size_t  arraySize, char* key){
-    if (key == NULL) {
-        return 0;
-    }
-
-    if(arraySize == -1){
-        return 0;
-    }
-
-    if (array == NULL) {
-        return 0;
-    }
-    for (size_t i = 0; i <= arraySize; i++) {
-        if (strcmp(key, array[i]) == 0) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-
+/**
+ * Concat array of string to a new string
+ * @param strings[] Array of strings
+ * @param count Number of string in the strings array
+ * @return New concatenated string
+ *
+ */
 char* concatStrings(const char *strings[], int count) {
 
     size_t totalLength = 1;
@@ -148,14 +188,21 @@ char* concatStrings(const char *strings[], int count) {
     return result;
 }
 
-
+/**
+ * Checks if the string is a number
+ * @param str String number
+ * @return 1 if the string is number and 0 if the string is not number
+ *
+ */
 int isNumber(const char *str) {
 
     if (*str == '-' || *str == '+') str++;
     int decimalFound = 0;
     while (*str) {
         if (*str == '.') {
-            if (decimalFound) return 0;
+            if (decimalFound) {
+                return 0;
+            };
             decimalFound = 1;
             str++;
             continue;
@@ -168,10 +215,23 @@ int isNumber(const char *str) {
     return 1;
 }
 
+/**
+ * Checks if a character is punctuation
+ * Except for '\''
+ * @param c Comparable character
+ * @return 1 if the char is punctuation and 0 if not punctuation
+ *
+ */
 int isSpecialPunct(char c){
     return c != '\'' && ispunct(c);
 }
 
+/**
+ * Checks if a string is a symbol
+ * @param str Comparable string
+ * @return 1 if the str is symbol and 0 if not symbol
+ *
+ */
 int isSymbol(const char *str){
     if(strcmp(str, ">=") == 0 || strcmp(str, "<=") == 0 || strcmp(str, "!=") == 0){
         return 1;
@@ -179,6 +239,15 @@ int isSymbol(const char *str){
     return isSpecialPunct(str[0]);
 }
 
+/**
+ * Replace string with given start index and end index and replace the string in that block with a new substring
+ * @param str Base string
+ * @param idx Start index of the substring
+ * @param endIdx End index of the substring
+ * @param subString Replacing sub-string
+ * @return None
+ *
+ */
 void replaceString(char *str, size_t idx, size_t endIdx, const char *subString) {
     size_t len = strlen(str);
     if (idx >= len) {
@@ -196,38 +265,92 @@ void replaceString(char *str, size_t idx, size_t endIdx, const char *subString) 
     memcpy(str + idx, subString, newLen);
 }
 
-
+/**
+ * Lowers every character in a string
+ * @param str Base string
+ * @return None
+ *
+ */
 void stringToLower(char* str){
-    if (str == NULL) return; // safety check
-
+    if (str == NULL) return;
     for (int i = 0; str[i]; i++) {
         str[i] = (char) tolower((unsigned char) str[i]);
     }
 }
 
+/**
+ * If the string is "SELECT" keyword
+ * @param str Base string
+ * @return None
+ *
+ */
 int isSelectKeyword(const char* str){
-    return caseInsensitiveCompare(str, SELECT_KEYWORD) == 0;
+    return caseInsensitiveCompare(str, "SELECT") == 0;
 }
 
+/**
+ * If the string is "INSERT" keyword
+ * @param str Base string
+ * @return None
+ *
+ */
 int isInsertKeyword(const char* str){
     return caseInsensitiveCompare(str, "INSERT") == 0;
 }
 
 
+/**
+ * If the string is "CREATE" keyword
+ * @param str Base string
+ * @return None
+ *
+ */
 int isCreateKeyword(const char* str){
     return caseInsensitiveCompare(str, "CREATE") == 0;
 }
 
+
+
+/**
+ * If the string is "WHERE" keyword
+ * @param str Base string
+ * @return None
+ *
+ */
+int isFilterKeyword(const char* str){
+    return caseInsensitiveCompare(str, "WHERE") == 0;
+}
+
+
+/**
+ * If the string is "UPDATE" keyword
+ * @param str Base string
+ * @return None
+ *
+ */
 int isUpdateKeyword(const char* str){
     return caseInsensitiveCompare(str, "UPDATE") == 0;
 }
 
+
+/**
+ * If the string is "DELETE" keyword
+ * @param str Base string
+ * @return None
+ *
+ */
 int isDeleteKeyword(const char* str){
     return caseInsensitiveCompare(str, "DELETE") == 0;
 }
 
 
-
+/**
+ * Print error in red text
+ * @param str format, string format
+ * @param ... Arguments
+ * @return None
+ *
+ */
 void printError(const char *format, ...){
     va_list args;
     va_start(args, format);
@@ -237,6 +360,13 @@ void printError(const char *format, ...){
     va_end(args);
 }
 
+/**
+ * Print success in green text
+ * @param str format, string format
+ * @param ... Arguments
+ * @return None
+ *
+ */
 void printSuccess(const char *format, ...) {
     va_list args;
     va_start(args, format);
@@ -246,6 +376,11 @@ void printSuccess(const char *format, ...) {
     va_end(args);
 }
 
+
+/**
+ * Creates a string buffer with size 1 byte
+ * @return buffer string
+ */
 char *createBuffer() {
     char *buffer = malloc(1);
     if (buffer == NULL) {
@@ -256,6 +391,11 @@ char *createBuffer() {
     return buffer;
 }
 
+/**
+ * Creates a string buffer with size `size` byte
+ * @param size Buffer size in bytes
+ * @return buffer string
+ */
 char *createBufferWithSize(size_t size){
     char *buffer = malloc(size + 1);
     if (buffer == NULL) {
@@ -266,6 +406,13 @@ char *createBufferWithSize(size_t size){
     return buffer;
 }
 
+/**
+ * Insert string in a buffer
+ * @param buffer Buffer pointer
+ * @param format String format
+ * @param ... Argument variables
+ * @return None
+ */
 void insertInBuffer(char **buffer, const char *format, ...) {
     va_list args;
     va_start(args, format);
@@ -286,15 +433,31 @@ void insertInBuffer(char **buffer, const char *format, ...) {
     va_end(args);
 }
 
+/**
+ * Clears a buffer
+ * @param buffer Buffer pointer
+ * @return None
+ */
 void clearBuffer(char **buffer) {
     free(*buffer);
     *buffer = NULL;
 }
 
+/**
+ * Maximum value between two number
+ * @param a
+ * @param b
+ * @return max value
+ */
 size_t max(size_t a, size_t b){
     return a > b ? a : b;
 };
 
+/**
+ * If a sql string type, value has ',' inside then escape the commas with '\\,'
+ * @param input String input
+ * @return Escaped comma string
+ */
 char* escapeCommas(const char* input) {
     int cCount = 0;
     for (int i = 0; input[i] != '\0'; i++) {

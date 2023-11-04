@@ -230,13 +230,14 @@ NodeList loadTables(){
         printError("Database corrupted");
         return nodeList;
     }
-
+    size_t size = 0;
     while ((getline(&line, &len, file)) != -1) {
         size_t s_len = strlen(line);
         line[s_len-1] = '\0';
         FILE *sqlFile = fopen(line, "r");
         size_t internalLen = 0;
         if(sqlFile != NULL){
+            size++;
             char *sql = NULL;
             getline(&sql, &internalLen, sqlFile);
             TokenRet tokenRet = lexAnalyze(sql);
@@ -246,9 +247,8 @@ NodeList loadTables(){
             insertInNodeList(&nodeList, newNode);
             free(sql);
         }
-
     }
-
+    nodeList.size = size;
     free(line);
     fclose(file);
     return nodeList;
@@ -916,6 +916,28 @@ DBOp dbInsert(Node sqlNode, Node tableNode){
     return dbOp;
 }
 
+void printTables(NodeList nodeList){
+    for (int i = 0; i < MAX_COL_SIZE; ++i) {
+        printf("_");
+    }
+    printf("\n");
+    printf(" TABLES ");
+
+    printf("\n");
+    for (int i = 0; i < MAX_COL_SIZE; ++i) {
+        printf("_");
+    }
+    printf("\n");
+    for (size_t i = 0; i < nodeList.size; ++i) {
+        printf("%zd |  ", i);
+        printf("%s", nodeList.nodes[i]->table.value);
+        printf("\n");
+        for (size_t j = 0; j < MAX_COL_SIZE; ++j) {
+            printf("_");
+        }
+        printf("\n");
+    }
+}
 
 void printDbOp(DBOp *dbOp){
     char* result = dbOp->result;

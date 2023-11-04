@@ -76,7 +76,6 @@ struct {
     size_t size;
 } typedef NodeList;
 
-
 NodeList emptyNodeList();
 TokenType getTokenType(const char *token);
 void freeTokenParseMemory(char* input, char* inpArray, Token* tokens, size_t numTokens);

@@ -52,5 +52,5 @@ void mergeDbOp(DBOp* source, DBOp* destination);
 char* getRowValue(char** rows, size_t rowIdx, size_t columnIdx, size_t rowCount);
 void clearDBOp(DBOp *dbOp);
 void printDbOp(DBOp *dbOp);
-
+void printTables(NodeList nodeList);
 #endif //MINISQL_DB_H

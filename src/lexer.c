@@ -199,48 +199,9 @@ TokenRet lexAnalyze(char *input) {
         inp++;
         length++;
     }
-
-//    // For demonstration purposes: printing the tokens.
-//    for (int i = 0; i < tok_idx; ++i) {
-//        printf("%d - %s - %ld - %ld\n", tokens[i].type, tokens[i].value, tokens[i].start, tokens[i].end);
-//    }
-
     TokenRet tokenRet = {tokens, tok_idx, input};
     return tokenRet;
 }
-
-/**
- SELECT
- ---------
- General select statement examples:
- -> Select * from table;
- -> Select col, col2, col3, from table;
- -> Select col as name, col2 as name, col3 as name from table;
- -> Select col from table where col = Jjz;
-
- CREATE
- ---------
- Creating table examples:
- -> Create table table1(id integer, name varchar(255) not null, email text not null)
-
- UPDATE
- ---------
- Update table examples
-
- -> Update table set col1=1, col2=2, col3=3 where col1 = value;
-
- DELETE
- ---------
- Delete row examples:
- -> Delete from table1 where col1 = 1;
-
-
- INSERT
- ---------
- Insert row examples:
- -> Insert into table1(col1, col2, col3) values('val1', 'val2', 'val3')
-
-**/
 
 
 Node createInvalidNode(){

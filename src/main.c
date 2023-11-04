@@ -178,7 +178,6 @@ int main() {
     }
     while (1) {
         printf("\n$>> ");
-        // Takes input
         char *input = handleInput();
         if(input != NULL){
             if(caseInsensitiveCompare(input, "quit;") == 0){
@@ -186,6 +185,10 @@ int main() {
             }
             else if(caseInsensitiveCompare(input, "create user;") == 0){
                 createUser(userTable);
+            }
+            else if(caseInsensitiveCompare(input, "list tables;") == 0){
+                printTables(tableList);
+                tableList = loadTables();
             }
             else{
                 TokenRet tokenRet = lexAnalyze(input);
@@ -250,9 +253,9 @@ int main() {
                     }
 
                 }
-                fflush(stdin);
-                printf(" ");
             }
+            fflush(stdin);
+            printf(" ");
         }
 
     }
