@@ -54,7 +54,7 @@ DBOp dbUpdate(Node sqlNode, Node tableNode);
 DBOp dbDelete(Node sqlNode, Node tableNode);
 
 
-DBOp execSQL(char* input, NodeList *tableList);
+DBOp execSQL(char* input);
 
 char* getRowValue(char** rows, size_t rowIdx, size_t columnIdx, size_t rowCount);
 void clearDBOp(DBOp *dbOp);

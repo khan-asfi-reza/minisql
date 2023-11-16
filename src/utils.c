@@ -415,8 +415,14 @@ char *createBufferWithSize(size_t size){
  * @return None
  */
 void insertInBuffer(char **buffer, const char *format, ...) {
+    // Function divided in two part
+    // First part identifies the required size for the new string
+    // Second part inserts the string
+
     va_list args;
     va_start(args, format);
+    // Instead of inserting the arg in a string buffer, it is not inserting but rather
+    // identifying the number of bytes needed to insert , + 1 for null terminator
     int neededSize = vsnprintf(NULL, 0, format, args) + 1;
     va_end(args);
     if (neededSize <= 0) {
@@ -435,13 +441,33 @@ void insertInBuffer(char **buffer, const char *format, ...) {
 }
 
 /**
+* Frees multiple heap allocated variable
+* @param count Number of variables
+* @return None
+*/
+void freeMultiple(int count, ...) {
+    va_list args;
+    va_start(args, count);
+
+    for (int i = 0; i < count; ++i) {
+        void *ptr = va_arg(args, void *);
+        free(ptr);
+    }
+    va_end(args);
+}
+
+/**
  * Clears a buffer
  * @param buffer Buffer pointer
  * @return None
  */
 void clearBuffer(char **buffer) {
-    free(*buffer);
-    *buffer = NULL;
+    if(buffer != NULL){
+        if(*buffer != NULL){
+            free(*buffer);
+        }
+        *buffer = NULL;
+    }
 }
 
 /**
@@ -534,4 +560,31 @@ size_t getLine(char **line, size_t *n, FILE *file) {
     }
     (*line)[i] = '\0';
     return i;
+}
+
+
+/**
+ *T his function is often used after reading input using functions like
+ * `scanf` or `fgets`.
+ * These functions may leave a newline character or other unwanted characters in the input buffer.
+ * If not cleared, these leftover characters can be mistakenly read by subsequent input operations,
+ * leading to logical errors in the program. By calling clearInputBuffer,
+ * ensure that the input buffer is clean before the next input operation.
+ */
+void clearInputBuffer() {
+    int c;
+    /**
+     * This is a while loop that continuously calls getchar()
+     * to read the next character from the standard input.
+     * It assigns the character to c and then checks two conditions:
+     *
+     * - If c is not equal to the newline character ('\n'),
+     *   which usually signifies the end of a line of input.
+     * - If c is not the special EOF value,
+     *   which signifies the end of the input stream (for example, when the user has no more input to provide,
+     *   or if you're reading from a file and reach its end).
+     *  The loop continues until either a newline character is found or the end of the file/input stream is reached.
+     *  During each iteration, the function effectively discards the character read.
+     */
+    while ((c = getchar()) != '\n' && c != EOF) { }
 }

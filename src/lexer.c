@@ -265,6 +265,9 @@ Node createASTNode(TokenRet tokenRet){
     node.table = table;
     node.action = action;
     node.primaryKey = primaryKey;
+    node.sql = createBuffer();
+    insertInBuffer(&node.sql, "%s", tokenRet.sql);
+    free(tokenRet.sql);
     int colsSet = 0;
     while(i < len){
         Token cur = tokens[i];
@@ -542,7 +545,7 @@ Node createASTNode(TokenRet tokenRet){
         }
         i++;
     }
-    node.sql = tokenRet.sql;
+
     return node;
 }
 
@@ -580,3 +583,82 @@ Node *getNodeFromList(NodeList *nodeList, char* table){
     return NULL;
 }
 
+void destroyToken(Token *token){
+    if(token->value != NULL){
+        free(token->value);
+    }
+}
+
+void destroyNode(Node *node){
+    if(node->sql != NULL){
+        free(node->sql);
+    }
+    for (int i = 0; i < node->colsLen; ++i) {
+        if(node->columns[i].columnToken.value != NULL){
+            free(node->columns[i].columnToken.value);
+        }
+
+        if(node->columns[i].valueToken.value != NULL){
+            free(node->columns[i].valueToken.value);
+        }
+
+        if(node->columns[i].funcToken != NULL){
+            if(node->columns[i].funcToken->value != NULL){
+                free(node->columns[i].funcToken->value);
+            }
+        }
+
+        if(node->columns[i].nextLogicalOp.value != NULL){
+            free(node->columns[i].nextLogicalOp.value);
+        }
+
+        if(node->columns[i].symbol.value != NULL){
+            free(node->columns[i].symbol.value);
+        }
+
+        if(node->columns[i].display != NULL){
+            free(node->columns[i].display);
+        }
+    }
+    for (int i = 0; i < node->filtersLen; ++i) {
+        if(node->filters[i].columnToken.value != NULL){
+            free(node->filters[i].columnToken.value);
+        }
+
+        if(node->filters[i].valueToken.value != NULL){
+            free(node->filters[i].valueToken.value);
+        }
+
+        if(node->filters[i].funcToken->value != NULL){
+            free(node->filters[i].funcToken->value);
+        }
+
+        if(node->filters[i].nextLogicalOp.value != NULL){
+            free(node->filters[i].nextLogicalOp.value);
+        }
+
+        if(node->filters[i].symbol.value != NULL){
+            free(node->filters[i].symbol.value);
+        }
+
+        if(node->filters[i].display != NULL){
+            free(node->filters[i].display);
+        }
+
+    }
+    if(node->table.value != NULL){
+        free(node->table.value);
+    }
+    if(node->action.value != NULL){
+        free(node->action.value);
+    }
+}
+
+void destroyNodeList(NodeList *nodeList){
+    for (int i = 0; i < nodeList->size; ++i) {
+        if(nodeList->nodes[i] != NULL){
+            destroyNode(nodeList->nodes[i]);
+        }
+
+    }
+}
