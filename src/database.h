@@ -54,11 +54,12 @@ DBOp dbUpdate(Node sqlNode, Node tableNode);
 DBOp dbDelete(Node sqlNode, Node tableNode);
 
 
-DBOp execSQL(char* input);
+DBOp execSQL(char* input, NodeList *tables);
 
 char* getRowValue(char** rows, size_t rowIdx, size_t columnIdx, size_t rowCount);
 void clearDBOp(DBOp *dbOp);
 void printDbOp(DBOp *dbOp);
 void printTables(NodeList nodeList);
-int doesTableExist(char* table);
+int doesTableExist(NodeList *tables, char* table);
+char* getTableConfFileName();
 #endif //MINISQL_DB_H

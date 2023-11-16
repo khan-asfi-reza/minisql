@@ -1152,12 +1152,11 @@ void printTables(NodeList nodeList){
 }
 
 
-DBOp execSQL(char* input){
-    NodeList tableList = loadTables();
+DBOp execSQL(char* input, NodeList *tables){
     TokenRet tokenRet = lexAnalyze(input);
     Node node = createASTNode(tokenRet);
     if(node.isInvalid == 0){
-        Node *tableNode = getNodeFromList(&tableList, node.table.value);
+        Node *tableNode = getNodeFromList(tables, node.table.value);
         if(tableNode != NULL){
             if(isSelectKeyword(node.action.value)){
                 DBOp dbOp = dbSelect(node, *tableNode);
@@ -1191,7 +1190,6 @@ DBOp execSQL(char* input){
 
     }
     destroyNode(&node);
-    destroyNodeList(&tableList);
     return createDBOp();
 }
 
@@ -1273,14 +1271,11 @@ char* getRowValue(char** rows, size_t rowIdx, size_t columnIdx, size_t rowCount)
     return NULL;
 }
 
-int doesTableExist(char* table){
-    int exists = 0;
-    NodeList tables = loadTables();
-    Node *node = getNodeFromList(&tables, table);
+int doesTableExist(NodeList *tables, char* table){
+    int exists = 0;;
+    Node *node = getNodeFromList(tables, table);
     if(node != NULL){
         exists = 1;
-        destroyNodeList(&tables);
-        free(node);
     }
     return exists;
 }

@@ -200,7 +200,9 @@ TokenRet lexAnalyze(char *input) {
         inp++;
         length++;
     }
-    TokenRet tokenRet = {tokens, tok_idx, input};
+    TokenRet tokenRet = {tokens, tok_idx};
+    tokenRet.sql = malloc(sizeof(char) * strlen(input) + 1);
+    strcpy(tokenRet.sql, input);
     return tokenRet;
 }
 
@@ -267,13 +269,13 @@ Node createASTNode(TokenRet tokenRet){
     node.primaryKey = primaryKey;
     node.sql = createBuffer();
     insertInBuffer(&node.sql, "%s", tokenRet.sql);
-    free(tokenRet.sql);
+    clearBuffer(&tokenRet.sql);
     int colsSet = 0;
     while(i < len){
         Token cur = tokens[i];
         if(i == 0){
             if(cur.type != TOKEN_KEYWORD){
-                printErrorMsg(tokenRet.sql, cur.start, "");
+                printErrorMsg(node.sql, cur.start, "");
                 return createInvalidNode();
             }
 
@@ -290,10 +292,10 @@ Node createASTNode(TokenRet tokenRet){
             else if(i == 1 && (isUpdateKeyword(action.value) || isDeleteKeyword(action.value))){
                 if(tokens[i].type != TOKEN_IDENTIFIER){
                     if(tokens[i+1].type == TOKEN_KEYWORD){
-                        printErrorMsg(tokenRet.sql, tokens[i+1].start, "Invalid table name, SQL Keywords cannot be a table.");
+                        printErrorMsg(node.sql, tokens[i+1].start, "Invalid table name, SQL Keywords cannot be a table.");
                     }
                     else{
-                        printErrorMsg(tokenRet.sql, tokens[i+1].start, "Invalid table name.");
+                        printErrorMsg(node.sql, tokens[i+1].start, "Invalid table name.");
                     }
                     return createInvalidNode();
                 }
@@ -305,10 +307,10 @@ Node createASTNode(TokenRet tokenRet){
                 // Show error
                 if (tokens[i+1].type != TOKEN_IDENTIFIER){
                     if(tokens[i+1].type == TOKEN_KEYWORD){
-                        printErrorMsg(tokenRet.sql, tokens[i+1].start, "Invalid table name, SQL Keywords cannot be a table.");
+                        printErrorMsg(node.sql, tokens[i+1].start, "Invalid table name, SQL Keywords cannot be a table.");
                     }
                     else{
-                        printErrorMsg(tokenRet.sql, tokens[i+1].start, "Invalid table name.");
+                        printErrorMsg(node.sql, tokens[i+1].start, "Invalid table name.");
                     }
                     return createInvalidNode();
                 }
@@ -340,12 +342,15 @@ Node createASTNode(TokenRet tokenRet){
                 while (i < len){
                     if( tokens[i].type == TOKEN_R_PAR ||
                         tokens[i].type == TOKEN_KEYWORD){
+                        node.columns[i].display = NULL;
                         if(caseInsensitiveCompare(tokens[i].value, "AS") == 0){
                             if(i+1 < len && tokens[i+1].type == TOKEN_IDENTIFIER){
-                                node.columns[i].display = tokens[i].value;
+                                node.columns[i].display = tokens[i+1].value;
+                                i += 2;
+                                continue;
                             }
                             else{
-                                printErrorMsg(tokenRet.sql, tokens[i].start, "Invalid column as");
+                                printErrorMsg(node.sql, tokens[i].start, "Invalid column as");
                                 return createInvalidNode();
                             }
                         }
@@ -357,13 +362,13 @@ Node createASTNode(TokenRet tokenRet){
                         }
                     }
                     if(start == i && tokens[i].type != TOKEN_IDENTIFIER){
-                        printErrorMsg(tokenRet.sql, tokens[i].start, "Invalid column name");
+                        printErrorMsg(node.sql, tokens[i].start, "Invalid column name");
                         return createInvalidNode();
                     }
 
                     if(tokens[i].type == TOKEN_IDENTIFIER){
                         if(prevType != TOKEN_EMPTY){
-                            printErrorMsg(tokenRet.sql, tokens[i].start, "Invalid select statement");
+                            printErrorMsg(node.sql, tokens[i].start, "Invalid select statement");
                             return createInvalidNode();
                         }
                         node.columns[cols_index].columnToken = tokens[i];
@@ -387,7 +392,7 @@ Node createASTNode(TokenRet tokenRet){
 
                     if(tokens[i].type == TOKEN_BUILT_IN_FUNC){
                         if(prevType != TOKEN_BUILT_IN_FUNC && prevType != TOKEN_DATA_TYPE){
-                            printErrorMsg(tokenRet.sql, tokens[i].start, "Column options must be followed by the column data type");
+                            printErrorMsg(node.sql, tokens[i].start, "Column options must be followed by the column data type");
                             return createInvalidNode();
                         }
 
@@ -405,8 +410,8 @@ Node createASTNode(TokenRet tokenRet){
                                 const char* err = " :is not a valid default";
                                 char *newString = (char *)malloc(strlen(tokens[i].value) + strlen(err) + 1);
                                 sprintf(newString, "%s%s", tokens[i].value, err);
-                                printErrorMsg(tokenRet.sql, tokens[i].start, newString);
-                                free(newString);
+                                printErrorMsg(node.sql, tokens[i].start, newString);
+                                clearBuffer(&newString);
                                 return createInvalidNode();
                             }
                         }
@@ -421,7 +426,7 @@ Node createASTNode(TokenRet tokenRet){
                     else if(tokens[i].type == TOKEN_SYMBOL){
                         if(strcmp(tokens[i].value, "=") == 0){
                             if(prevType != TOKEN_IDENTIFIER){
-                                printErrorMsg(tokenRet.sql, tokens[i].start, "Invalid column selected before assignment");
+                                printErrorMsg(node.sql, tokens[i].start, "Invalid column selected before assignment");
                             }
                             node.columns[cols_index].symbol = tokens[i];
                             prevType = TOKEN_SYMBOL;
@@ -434,7 +439,7 @@ Node createASTNode(TokenRet tokenRet){
 
                     else if(tokens[i].type == TOKEN_STRING || tokens[i].type == TOKEN_NUMBER){
                         if(prevType != TOKEN_SYMBOL){
-                            printErrorMsg(tokenRet.sql, tokens[i].start, "Is not a valid string or number assignment");
+                            printErrorMsg(node.sql, tokens[i].start, "Is not a valid string or number assignment");
                         }
                         node.columns[cols_index].valueToken = tokens[i];
                         prevType = tokens[i].type;
@@ -445,7 +450,7 @@ Node createASTNode(TokenRet tokenRet){
                 if(isInsert){
                     i++;
                     if(i + 1 == len - 1 ){
-                        printErrorMsg(tokenRet.sql, tokens[i].start, "Values are missing");
+                        printErrorMsg(node.sql, tokens[i].start, "Values are missing");
                         return createInvalidNode();
                     }
                     size_t valIdx = 0;
@@ -453,7 +458,7 @@ Node createASTNode(TokenRet tokenRet){
                         while (i < len){
                             if(tokens[i].type == TOKEN_L_PAR || tokens[i].type == TOKEN_SYMBOL){
                                 if(tokens[i].value[0] != ',' && tokens[i].value[0] != '('){
-                                    printErrorMsg(tokenRet.sql, tokens[i].start, "Invalid symbol");
+                                    printErrorMsg(node.sql, tokens[i].start, "Invalid symbol");
                                     return createInvalidNode();
                                 }
 
@@ -469,7 +474,7 @@ Node createASTNode(TokenRet tokenRet){
                         }
                     }
                     if(valIdx != cols_index + 1){
-                        printErrorMsg(tokenRet.sql, tokens[i].start, "Values are missing, values doesn't match the number of columns");
+                        printErrorMsg(node.sql, tokens[i].start, "Values are missing, values doesn't match the number of columns");
                         return createInvalidNode();
                     }
                 }
@@ -552,7 +557,7 @@ Node createASTNode(TokenRet tokenRet){
 NodeList emptyNodeList(){
     NodeList nodeList = {NULL, NULL, 0};
     return nodeList;
-};
+}
 
 void insertInNodeList(NodeList *nodeList, Node *node){
     size_t newSize = nodeList->size + 1;
@@ -590,67 +595,73 @@ void destroyToken(Token *token){
 }
 
 void destroyNode(Node *node){
-    if(node->sql != NULL){
-        free(node->sql);
-    }
-    for (int i = 0; i < node->colsLen; ++i) {
-        if(node->columns[i].columnToken.value != NULL){
-            free(node->columns[i].columnToken.value);
+    if(node->isInvalid == 0){
+        if(node->sql != NULL){
+            free(node->sql);
+            node->sql = NULL;
         }
+        for (int i = 0; i < node->colsLen; ++i) {
+            if(node->columns[i].columnToken.value != NULL){
+                free(node->columns[i].columnToken.value);
+                node->columns[i].columnToken.value = NULL;
+            }
 
-        if(node->columns[i].valueToken.value != NULL){
-            free(node->columns[i].valueToken.value);
-        }
+            if(node->columns[i].valueToken.value != NULL){
+                free(node->columns[i].valueToken.value);
+                node->columns[i].valueToken.value = NULL;
+            }
 
-        if(node->columns[i].funcToken != NULL){
-            if(node->columns[i].funcToken->value != NULL){
-                free(node->columns[i].funcToken->value);
+            if(node->columns[i].nextLogicalOp.value != NULL){
+                free(node->columns[i].nextLogicalOp.value);
+                node->columns[i].nextLogicalOp.value = NULL;
+            }
+
+            if(node->columns[i].symbol.value != NULL){
+                free(node->columns[i].symbol.value);
+                node->columns[i].symbol.value = NULL;
+            }
+
+            if(node->columns[i].display != NULL){
+                free(node->columns[i].display);
+                node->columns[i].display = NULL;
             }
         }
+        for (int i = 0; i < node->filtersLen; ++i) {
+            if(node->filters[i].columnToken.value != NULL){
+                free(node->filters[i].columnToken.value);
+                node->filters[i].columnToken.value = NULL;
+            }
 
-        if(node->columns[i].nextLogicalOp.value != NULL){
-            free(node->columns[i].nextLogicalOp.value);
-        }
+            if(node->filters[i].valueToken.value != NULL){
+                free(node->filters[i].valueToken.value);
+                node->filters[i].valueToken.value = NULL;
+            }
 
-        if(node->columns[i].symbol.value != NULL){
-            free(node->columns[i].symbol.value);
-        }
 
-        if(node->columns[i].display != NULL){
-            free(node->columns[i].display);
-        }
-    }
-    for (int i = 0; i < node->filtersLen; ++i) {
-        if(node->filters[i].columnToken.value != NULL){
-            free(node->filters[i].columnToken.value);
-        }
+            if(node->filters[i].nextLogicalOp.value != NULL){
+                free(node->filters[i].nextLogicalOp.value);
+                node->filters[i].nextLogicalOp.value = NULL;
+            }
 
-        if(node->filters[i].valueToken.value != NULL){
-            free(node->filters[i].valueToken.value);
-        }
+            if(node->filters[i].symbol.value != NULL){
+                free(node->filters[i].symbol.value);
+                node->filters[i].symbol.value = NULL;
+            }
 
-        if(node->filters[i].funcToken->value != NULL){
-            free(node->filters[i].funcToken->value);
-        }
+            if(node->filters[i].display != NULL){
+                free(node->filters[i].display);
+                node->filters[i].display = NULL;
+            }
 
-        if(node->filters[i].nextLogicalOp.value != NULL){
-            free(node->filters[i].nextLogicalOp.value);
         }
-
-        if(node->filters[i].symbol.value != NULL){
-            free(node->filters[i].symbol.value);
+        if(node->table.value != NULL){
+            free(node->table.value);
+            node->table.value = NULL;
         }
-
-        if(node->filters[i].display != NULL){
-            free(node->filters[i].display);
+        if(node->action.value != NULL){
+            free(node->action.value);
+            node->action.value = NULL;
         }
-
-    }
-    if(node->table.value != NULL){
-        free(node->table.value);
-    }
-    if(node->action.value != NULL){
-        free(node->action.value);
     }
 }
 
@@ -659,6 +670,5 @@ void destroyNodeList(NodeList *nodeList){
         if(nodeList->nodes[i] != NULL){
             destroyNode(nodeList->nodes[i]);
         }
-
     }
 }

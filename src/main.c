@@ -35,8 +35,14 @@ struct {
 
 
 
-// Define a function to get user information. It takes an integer argument to determine if password confirmation is needed.
-User getUserInfo(int confirmPassword){
+/** It takes an integer argument to determine if password confirmation is needed.
+ *  Gets user authentication info from stdin. Verifies if the username is valid
+ *  If confirmPassword flag is up then checks for password and Confirm Password inputs
+ *  Recursively asks for input.
+ *  @param confirmPassword If confirming password is necessary
+ *  @returns validated User information
+ * */
+ User getUserInfo(int confirmPassword){
     // Create a User struct instance to store the user's details.
     fflush(stdin);
     User user;
@@ -94,18 +100,19 @@ User getUserInfo(int confirmPassword){
     return user;
 }
 
-int createUser(){
+int createUser(NodeList *tables){
     printf("Create your account\n");
     User user = getUserInfo(1);
     char *buffer = createBuffer();
     insertInBuffer(&buffer, "INSERT INTO user (username, password) VALUES ('%s', '%s');", user.username, user.password);
-    DBOp dbOp = execSQL(buffer);
+    DBOp dbOp = execSQL(buffer, tables);
+    clearBuffer(&buffer);
     printDbOp(&dbOp);
     return 1;
 }
 
 
-int initialize(){
+void initDataDirectory(){
     if (directoryExists(DATA_DIR) != 1) {
         if (createDirectory(DATA_DIR)) {
             printf("Setting up 'minisql database.\n");
@@ -113,9 +120,19 @@ int initialize(){
             printf("Failed to setup database, error: Failed to create data directory .\n");
         }
     }
-    int exists = doesTableExist("user");
+    char *conf = getTableConfFileName();
+
+    if(fileExists(conf) == 0){
+        createFile(conf);
+    }
+    clearBuffer(&conf);
+}
+
+int initialize(NodeList *tables){
+    int exists = doesTableExist(tables, "user");
     if(exists == 0){
-        execSQL("CREATE TABLE user (id integer primary key, username varchar unique, password varchar, created datetime default now)");
+        execSQL("CREATE TABLE user (id integer primary key, username varchar unique, password varchar, created datetime default now)", tables);
+        *tables = loadTables();
         return 0;
     }
     return 1;
@@ -123,10 +140,11 @@ int initialize(){
 }
 
 
-int authenticate(User user){
+int authenticate(User user, NodeList *tables){
     char *buffer = createBuffer();
     insertInBuffer(&buffer, "SELECT username, password FROM user where username = '%s';", user.username);
-    DBOp dbOp = execSQL(buffer);
+    DBOp dbOp = execSQL(buffer, tables);
+    clearBuffer(&buffer);
     if(dbOp.rowCount != 1){
         clearBuffer(&buffer);
         return -1;
@@ -143,17 +161,17 @@ int authenticate(User user){
 
 
 int main() {
-
     printIntroText();
-    int setup = initialize();
-    NodeList tableList = loadTables();
+    initDataDirectory();
+    NodeList tables = loadTables();
+    int setup = initialize(&tables);
     if (setup == 0) {
-        createUser();
+        createUser(&tables);
     }
     while (1) {
         printf("Login to your account\n");
         User user = getUserInfo(0);
-        int auth = authenticate(user);
+        int auth = authenticate(user, &tables);
         if (auth == 1) {
             printSuccess("Logged in successfully");
             break;
@@ -170,12 +188,12 @@ int main() {
             if (caseInsensitiveCompare(input, "quit;") == 0) {
                 exit(0);
             } else if (caseInsensitiveCompare(input, "create user;") == 0) {
-                createUser();
+                createUser(&tables);
             } else if (caseInsensitiveCompare(input, "list tables;") == 0) {
-                printTables(tableList);
-                tableList = loadTables();
+                printTables(tables);
+                tables = loadTables();
             } else {
-                DBOp dbOp = execSQL(input);
+                DBOp dbOp = execSQL(input, &tables);
                 if (dbOp.code == SUCCESS) {
                     printSuccess("%s", dbOp.successMsg);
                     if(isSelectKeyword(dbOp.action) || isInsertKeyword(dbOp.action)){
@@ -187,6 +205,7 @@ int main() {
                 }
                 clearDBOp(&dbOp);
             }
+            clearBuffer(&input);
             fflush(stdin);
             printf(" ");
         }
