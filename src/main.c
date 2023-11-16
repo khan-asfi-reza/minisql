@@ -9,6 +9,7 @@
 #include "filesystem.h"
 #include "database.h"
 #include "stdbool.h"
+
 #define MAX_LENGTH 32
 
 void printIntroText(){
@@ -100,56 +101,92 @@ struct {
     return user;
 }
 
+/** Creates a user and stores in user table
+ *  @param NodeList tables List of stored tables
+ *  @returns 1 or 0
+ * */
 int createUser(NodeList *tables){
     printf("Create your account\n");
+    // Get user info from stdin and avoid confirming password
     User user = getUserInfo(1);
     char *buffer = createBuffer();
+    // SQL To create user record in the table
     insertInBuffer(&buffer, "INSERT INTO user (username, password) VALUES ('%s', '%s');", user.username, user.password);
+    // Execute sql
     DBOp dbOp = execSQL(buffer, tables);
+    // Clear sql input
     clearBuffer(&buffer);
+    // Print the row
     printDbOp(&dbOp);
     return 1;
 }
 
-
+/** Creates a data directory and table config.
+ *  Data directory serves the purpose of storing actual data.
+ *  Every sql, row, column and index data will be stored in the data directory.
+ *  Table config stores the path of the table sql construction file. To keep
+ *  track of the tables in the database, the .table config is created.
+ *  In .table file sql path is stored in the following order
+ *  ```
+ *  data/table_user_sql
+ *  data/table_table_a_sql
+ *  ```
+ * */
 void initDataDirectory(){
+    // Checks if data directory exists or not
     if (directoryExists(DATA_DIR) != 1) {
+        // If not create the directory
         if (createDirectory(DATA_DIR)) {
             printf("Setting up 'minisql database.\n");
         } else {
             printf("Failed to setup database, error: Failed to create data directory .\n");
         }
     }
+    // Get the name of the config file
     char *conf = getTableConfFileName();
-
+    // Create the table config file generally .table file
     if(fileExists(conf) == 0){
         createFile(conf);
     }
+    // Clear the string from heap
     clearBuffer(&conf);
 }
 
 int initialize(NodeList *tables){
+    // Checks if user table exists or not.
+    // User table is required to authenticate
     int exists = doesTableExist(tables, "user");
     if(exists == 0){
+        // User Table must be created through sql create table command
         execSQL("CREATE TABLE user (id integer primary key, username varchar unique, password varchar, created datetime default now)", tables);
         *tables = loadTables();
         return 0;
     }
     return 1;
-
 }
 
 
+/** Authenticates a user to give access to the database
+ *  @param user User property taken from stdin
+ *  @param NodeList tables List of stored tables
+ *  @returns 1 or 0, 1 = User is authenticated and 0 = Not authenticated, -1 = User doesn't exist
+ * */
 int authenticate(User user, NodeList *tables){
+    // Create a buffer to create the sql statement
     char *buffer = createBuffer();
+    // Generate sql with buffer
     insertInBuffer(&buffer, "SELECT username, password FROM user where username = '%s';", user.username);
+    // Execute the sql
     DBOp dbOp = execSQL(buffer, tables);
+    // Clear buffer as no longer needed
     clearBuffer(&buffer);
+    // If fetched row is not 1, which means the row or record doesn't exist
     if(dbOp.rowCount != 1){
         clearBuffer(&buffer);
         return -1;
     }
     else{
+        // Check for password check if password matches
         char* pass = getRowValue(dbOp.rows, 0, 2, dbOp.rowCount);
         if(strcmp(pass, user.password) == 0){
             return 1;
@@ -199,7 +236,6 @@ int main() {
                     if(isSelectKeyword(dbOp.action) || isInsertKeyword(dbOp.action)){
                         printDbOp(&dbOp);
                     }
-
                 } else {
                     printError("%s", dbOp.error);
                 }
