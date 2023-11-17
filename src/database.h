@@ -13,7 +13,7 @@
 int getColumnIndex(Node* node, char* column);
 int matchColumnValue(char* table, size_t colIdx, char* str);
 
-NodeList loadTables();
+TableList loadTables();
 
 struct {
     Column columns[COL_MAX_SIZE];
@@ -54,12 +54,12 @@ DBOp dbUpdate(Node sqlNode, Node tableNode);
 DBOp dbDelete(Node sqlNode, Node tableNode);
 
 
-DBOp execSQL(char* input, NodeList *tables);
+DBOp execSQL(char* input, TableList *tables);
 
 char* getRowValue(char** rows, size_t rowIdx, size_t columnIdx, size_t rowCount);
 void clearDBOp(DBOp *dbOp);
 void printDbOp(DBOp *dbOp);
-void printTables(NodeList nodeList);
-int doesTableExist(NodeList *tables, char* table);
+void printTables(TableList nodeList);
+int doesTableExist(TableList *tables, char* table);
 char* getTableConfFileName();
 #endif //MINISQL_DB_H

@@ -554,12 +554,12 @@ Node createASTNode(TokenRet tokenRet){
     return node;
 }
 
-NodeList emptyNodeList(){
-    NodeList nodeList = {NULL, NULL, 0};
+TableList emptyNodeList(){
+    TableList nodeList = {NULL, NULL, 0};
     return nodeList;
 }
 
-void insertInNodeList(NodeList *nodeList, Node *node){
+void insertInNodeList(TableList *nodeList, Node *node){
     size_t newSize = nodeList->size + 1;
     Node** newNodes = realloc(nodeList->nodes, sizeof(Node*) * newSize);
     char** newTables = realloc(nodeList->tables, sizeof(char*) * newSize);
@@ -578,7 +578,7 @@ void insertInNodeList(NodeList *nodeList, Node *node){
     }
 }
 
-Node *getNodeFromList(NodeList *nodeList, char* table){
+Node *getNodeFromList(TableList *nodeList, char* table){
     size_t idx = 0;
     for (; idx < nodeList->size; ++idx) {
         if(caseInsensitiveCompare(nodeList->tables[idx], table) == 0){
@@ -665,7 +665,7 @@ void destroyNode(Node *node){
     }
 }
 
-void destroyNodeList(NodeList *nodeList){
+void destroyNodeList(TableList *nodeList){
     for (int i = 0; i < nodeList->size; ++i) {
         if(nodeList->nodes[i] != NULL){
             destroyNode(nodeList->nodes[i]);

@@ -76,21 +76,21 @@ struct {
     Node ** nodes;
     char ** tables;
     size_t size;
-} typedef NodeList;
+} typedef TableList;
 
-NodeList emptyNodeList();
+TableList emptyNodeList();
 TokenType getTokenType(const char *token);
 void freeTokenParseMemory(char* input, char* inpArray, Token* tokens, size_t numTokens);
 void handleTokenParseMemError(char* input, char* inpArray, Token* tokens, size_t numTokens, const char* errorMessage);
 TokenRet lexAnalyze(char *input);
 void destroyNode(Node *node);
-void destroyNodeList(NodeList *nodeList);
+void destroyNodeList(TableList *nodeList);
 void destroyToken(Token *token);
 Node createInvalidNode();
 
 Node createASTNode(TokenRet tokenRet);
-void insertInNodeList(NodeList *nodeList, Node *node);
-Node *getNodeFromList(NodeList *nodeList, char* table);
+void insertInNodeList(TableList *nodeList, Node *node);
+Node *getNodeFromList(TableList *nodeList, char* table);
 
 #endif //PARSER_H
 

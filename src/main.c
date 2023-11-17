@@ -105,7 +105,7 @@ struct {
  *  @param NodeList tables List of stored tables
  *  @returns 1 or 0
  * */
-int createUser(NodeList *tables){
+int createUser(TableList *tables){
     printf("Create your account\n");
     // Get user info from stdin and avoid confirming password
     User user = getUserInfo(1);
@@ -152,7 +152,12 @@ void initDataDirectory(){
     clearBuffer(&conf);
 }
 
-int initialize(NodeList *tables){
+/** Authenticates a user to give access to the database
+ *  @param user User property taken from stdin
+ *  @param NodeList tables List of stored tables
+ *  @returns 1 or 0, 1 = User is authenticated and 0 = Not authenticated, -1 = User doesn't exist
+ * */
+int initialize(TableList *tables){
     // Checks if user table exists or not.
     // User table is required to authenticate
     int exists = doesTableExist(tables, "user");
@@ -170,7 +175,7 @@ int initialize(NodeList *tables){
  *  @param NodeList tables List of stored tables
  *  @returns 1 or 0, 1 = User is authenticated and 0 = Not authenticated, -1 = User doesn't exist
  * */
-int authenticate(User user, NodeList *tables){
+int authenticate(User user, TableList *tables){
     // Create a buffer to create the sql statement
     char *buffer = createBuffer();
     // Generate sql with buffer
@@ -201,24 +206,24 @@ int authenticate(User user, NodeList *tables){
 int main() {
     printIntroText();
     initDataDirectory();
-    NodeList tables = loadTables();
+    TableList tables = loadTables();
     int setup = initialize(&tables);
     if (setup == 0) {
         createUser(&tables);
     }
-//    while (1) {
-//        printf("Login to your account\n");
-//        User user = getUserInfo(0);
-//        int auth = authenticate(user, &tables);
-//        if (auth == 1) {
-//            printSuccess("Logged in successfully");
-//            break;
-//        } else if (auth == -1) {
-//            printError("User doesn't exist");
-//        } else {
-//            printError("User password doesn't match");
-//        }
-//    }
+    while (1) {
+        printf("Login to your account\n");
+        User user = getUserInfo(0);
+        int auth = authenticate(user, &tables);
+        if (auth == 1) {
+            printSuccess("Logged in successfully");
+            break;
+        } else if (auth == -1) {
+            printError("User doesn't exist");
+        } else {
+            printError("User password doesn't match");
+        }
+    }
     while (1) {
         printf("\n$>> ");
         char *input = handleInput();

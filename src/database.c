@@ -301,11 +301,11 @@ int matchColumnValue(char* table, size_t colIdx, char* str){
  * creates an AST node from the tokens, and adds the node to the node list.
  * The function also handles file opening errors and database corruption issues.
  *
- * @return NodeList A list of nodes representing the AST of each SQL statement in the loaded tables.
+ * @return TableList A list of nodes representing the AST of each SQL statement in the loaded tables.
  */
-NodeList loadTables() {
+TableList loadTables() {
     FILE *file;
-    NodeList nodeList = emptyNodeList(); // Initialize an empty node list.
+    TableList nodeList = emptyNodeList(); // Initialize an empty node list.
 
     // Define the path to the table configuration file.
     char* tableConfStr = createBuffer();
@@ -1149,7 +1149,7 @@ DBOp dbInsert(Node sqlNode, Node tableNode){
     return dbOp;
 }
 
-void printTables(NodeList nodeList){
+void printTables(TableList nodeList){
     for (int i = 0; i < MAX_COL_SIZE; ++i) {
         printf("_");
     }
@@ -1173,7 +1173,7 @@ void printTables(NodeList nodeList){
 }
 
 
-DBOp execSQL(char* input, NodeList *tables){
+DBOp execSQL(char* input, TableList *tables){
     TokenRet tokenRet = lexAnalyze(input);
     Node node = createASTNode(tokenRet);
     if(node.isInvalid == 0){
@@ -1293,7 +1293,7 @@ char* getRowValue(char** rows, size_t rowIdx, size_t columnIdx, size_t rowCount)
     return NULL;
 }
 
-int doesTableExist(NodeList *tables, char* table){
+int doesTableExist(TableList *tables, char* table){
     int exists = 0;;
     Node *node = getNodeFromList(tables, table);
     if(node != NULL){
