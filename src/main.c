@@ -202,19 +202,14 @@ int authenticate(User user, TableList *tables){
 }
 
 
-
-int main() {
-    printIntroText();
-    initDataDirectory();
-    TableList tables = loadTables();
-    int setup = initialize(&tables);
-    if (setup == 0) {
-        createUser(&tables);
-    }
+/** User login system, asks for user login until password and username matches
+ *  @param tables tables List of stored tables
+ * */
+void login(TableList *tables){
     while (1) {
         printf("Login to your account\n");
         User user = getUserInfo(0);
-        int auth = authenticate(user, &tables);
+        int auth = authenticate(user, tables);
         if (auth == 1) {
             printSuccess("Logged in successfully");
             break;
@@ -224,7 +219,28 @@ int main() {
             printError("User password doesn't match");
         }
     }
+}
+
+
+int main() {
+    // Welcome text
+    printIntroText();
+    // Initial directory setup / Database setup
+    initDataDirectory();
+    // Loads Table List
+    TableList tables = loadTables();
+    // Setup user table, checks if user table is required or not
+    // Creates user table
+    int setup = initialize(&tables);
+    if (setup == 0) {
+        // If newly setup creates a user
+        createUser(&tables);
+    }
+    // Authentication system
+    login(&tables);
+
     while (1) {
+        // Takes sql input
         printf("\n$>> ");
         char *input = handleInput();
         if (input != NULL) {
@@ -238,7 +254,9 @@ int main() {
             } else {
                 DBOp dbOp = execSQL(input, &tables);
                 if (dbOp.code == SUCCESS) {
+                    // If successfully executed print out the success message
                     printSuccess("%s", dbOp.successMsg);
+                    // Show rows that were generated if only select and insert action was performed
                     if(isSelectKeyword(dbOp.action) || isInsertKeyword(dbOp.action)){
                         printDbOp(&dbOp);
                     }
