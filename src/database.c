@@ -193,7 +193,7 @@ DBOp dbCreateTable(Node sqlNode){
     // Continue if the previous steps were successful.
     if(dbOperation.code == SUCCESS){
         // Check if the table has an "id" column to treat as a primary key.
-        if(hasColumn(sqlNode.columns, sqlNode.colsLen, "id") == 0){
+        if(hasColumn(sqlNode.columns, sqlNode.colsLen, "id") == 1){
             // Create a file for the primary key.
             pKeyFile = getTablePkName(sqlNode);
             writeInFile(pKeyFile, "0");
@@ -649,7 +649,8 @@ DBOp dbUpdate(Node sqlNode, Node tableNode){
         char *line = NULL; // Buffer to store each line read from the file.
         size_t len = 0; // Length of the line.
         int lineCount = 0; // Count of lines processed.
-
+        char* writeLine = NULL;
+        int useWriteLine = 0;
         // Read each line from the table file.
         while (getLine(&line, &len, tableFile) != -1){
             lineCount++;
@@ -711,7 +712,12 @@ DBOp dbUpdate(Node sqlNode, Node tableNode){
                                 }
                                 if(match == 0 && upCount < 2){
                                     removeSingleQuotes(column.valueToken.value);
-                                    replaceString(line, iStart, j-1, column.valueToken.value);
+                                    char* newLine = replaceString(line, iStart, j-1, column.valueToken.value);
+                                    if(writeLine != NULL){
+                                        free(writeLine); // Free the old line if it's dynamically allocated
+                                    }
+                                    writeLine = newLine;
+                                    useWriteLine = 1;
                                     break;
                                 }
                                 else{
@@ -730,7 +736,12 @@ DBOp dbUpdate(Node sqlNode, Node tableNode){
                     }
                 }
                 rows[rowCount] = createBuffer();
-                insertInBuffer(&rows[rowCount], line);
+                if (useWriteLine == 1){
+                    insertInBuffer(&rows[rowCount], "%s", writeLine);
+                }
+                else{
+                    insertInBuffer(&rows[rowCount], "%s", line);
+                }
                 rowCount++;
 
                 // Reallocate memory for the rows array to accommodate the new row.
@@ -746,7 +757,17 @@ DBOp dbUpdate(Node sqlNode, Node tableNode){
                     return dbOp;
                 }
             }
-            insertInBuffer(&tBuffer, "%s", line); // Append the line to the buffer for writing back.
+            if(useWriteLine == 1){
+                insertInBuffer(&tBuffer, "%s", writeLine);
+                if(writeLine != NULL){
+                    free(writeLine);
+                    writeLine = NULL;
+                }
+                useWriteLine = 0;
+            }
+            else{
+                insertInBuffer(&tBuffer, "%s", line); // Append the line to the buffer for writing back.
+            }
         }
         fclose(tableFile); // Close the table file.
         dbOp.lineCount += lineCount; // Update the line count in the database operation.
@@ -1181,6 +1202,7 @@ DBOp execSQL(char* input, NodeList *tables){
         else{
             if(isCreateKeyword(node.action.value)){
                 DBOp dbOp = dbCreateTable(node);
+                *tables = loadTables();
                 return dbOp;
             }
             else{
@@ -1189,7 +1211,7 @@ DBOp execSQL(char* input, NodeList *tables){
         }
 
     }
-    destroyNode(&node);
+    // destroyNode(&node);
     return createDBOp();
 }
 

@@ -33,7 +33,7 @@ void removeSingleQuotes(char *str) {
  */
 int caseInsensitiveCompare(const char *str1, const char *str2) {
     while (*str1 && *str2) {
-        if (toupper((unsigned char)*str1) != toupper((unsigned char)*str2)) {
+        if (toupper(*str1) != toupper(*str2)) {
             return *str1 - *str2;
         }
         str1++;
@@ -48,7 +48,7 @@ int caseInsensitiveCompare(const char *str1, const char *str2) {
  * Checks if a string is an SQL data type, data types: varchar, text, number, integer, boolean etc
  * @param str Comparable string
  * @return whether or not the string is in the array of DATA_TYPES;
- *
+ * @example isDataType("INTEGER") will return 1, isDataType("X") will return 0
  */
 int isDataType(const char* str) {
     for (int i = 0; i < LEN_DATA_TYPES; i++) {
@@ -64,11 +64,10 @@ int isDataType(const char* str) {
  * String "12" will be converted to -> 12 (decimal)
  * @param str String number
  * @return Decimal number extracted from the string number
- *
+ * long long = size_t
  */
 size_t strToLongInt(const char *str) {
     char *strPtr;
-    errno = 0;
     size_t value = strtol(str, &strPtr, 10);
     return value;
 }
@@ -249,21 +248,19 @@ int isSymbol(const char *str){
  * @return None
  *
  */
-void replaceString(char *str, size_t idx, size_t endIdx, const char *subString) {
+char *replaceString(char *str, size_t idx, size_t endIdx, const char *subString) {
     size_t len = strlen(str);
-    if (idx >= len) {
-        return;
-    }
     size_t newLen = strlen(subString);
     size_t ogSubLen = endIdx - idx + 1;
     size_t newTotalLen = len - ogSubLen + newLen;
-    char *newStr = realloc(str, newTotalLen + 1);
-    if (newStr == NULL) {
-        return;
+    char *toCreate = malloc(newTotalLen + 1);
+    strcpy(toCreate, str);
+    if (idx >= len) {
+        return toCreate;
     }
-    str = newStr;
-    memmove(str + idx + newLen, str + idx + ogSubLen, len - idx - ogSubLen + 1);
-    memcpy(str + idx, subString, newLen);
+    memmove(toCreate + idx + newLen, toCreate + idx + ogSubLen, len - idx - ogSubLen + 1);
+    memcpy(toCreate + idx, subString, newLen);
+    return toCreate;
 }
 
 /**
@@ -275,7 +272,7 @@ void replaceString(char *str, size_t idx, size_t endIdx, const char *subString) 
 void stringToLower(char* str){
     if (str == NULL) return;
     for (int i = 0; str[i]; i++) {
-        str[i] = (char) tolower((unsigned char) str[i]);
+        str[i] = (char) tolower(str[i]);
     }
 }
 
@@ -565,7 +562,7 @@ size_t getLine(char **line, size_t *n, FILE *file) {
 
 /**
  *T his function is often used after reading input using functions like
- * `scanf` or `fgets`.
+ * `scan_f` or `f_gets`.
  * These functions may leave a newline character or other unwanted characters in the input buffer.
  * If not cleared, these leftover characters can be mistakenly read by subsequent input operations,
  * leading to logical errors in the program. By calling clearInputBuffer,

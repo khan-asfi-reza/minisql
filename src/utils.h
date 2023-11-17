@@ -33,7 +33,7 @@ size_t strToLongInt(const char *str);
 int isUpdateKeyword(const char* str);
 int isDeleteKeyword(const char* str);
 int isSymbol(const char *str);
-void replaceString(char *str, size_t idx, size_t endIdx, const char *subString);
+char* replaceString(char *str, size_t idx, size_t endIdx, const char *subString);
 int isValueFunc(const char* str);
 char* concatStrings(const char *strings[], int count);
 void freeMultiple(int count, ...);

@@ -49,12 +49,12 @@ struct {
     User user;
 
     // Declare a variable to track the validity of the input.
-    bool isValidInput;
+    int isValidInput;
 
     // Loop indefinitely until valid input is received and processed.
     while (1) {
         // Assume input is valid at the beginning of each loop iteration.
-        isValidInput = true;
+        isValidInput = 1;
         // Prompt the user for a username and read the input.
         printf("Enter username (max 32 characters): ");
         fgets(user.username, sizeof(user.username), stdin);
@@ -137,7 +137,7 @@ void initDataDirectory(){
     if (directoryExists(DATA_DIR) != 1) {
         // If not create the directory
         if (createDirectory(DATA_DIR)) {
-            printf("Setting up 'minisql database.\n");
+            printf("Setting up 'minisql' database.\n");
         } else {
             printf("Failed to setup database, error: Failed to create data directory .\n");
         }
@@ -159,7 +159,6 @@ int initialize(NodeList *tables){
     if(exists == 0){
         // User Table must be created through sql create table command
         execSQL("CREATE TABLE user (id integer primary key, username varchar unique, password varchar, created datetime default now)", tables);
-        *tables = loadTables();
         return 0;
     }
     return 1;
@@ -182,16 +181,18 @@ int authenticate(User user, NodeList *tables){
     clearBuffer(&buffer);
     // If fetched row is not 1, which means the row or record doesn't exist
     if(dbOp.rowCount != 1){
-        clearBuffer(&buffer);
+        // - 1 = User doesn't exist
         return -1;
     }
     else{
         // Check for password check if password matches
         char* pass = getRowValue(dbOp.rows, 0, 2, dbOp.rowCount);
         if(strcmp(pass, user.password) == 0){
+            // Password matched
             return 1;
         }
     }
+    // 0 = Password mismatch
     return 0;
 }
 
@@ -205,19 +206,19 @@ int main() {
     if (setup == 0) {
         createUser(&tables);
     }
-    while (1) {
-        printf("Login to your account\n");
-        User user = getUserInfo(0);
-        int auth = authenticate(user, &tables);
-        if (auth == 1) {
-            printSuccess("Logged in successfully");
-            break;
-        } else if (auth == -1) {
-            printError("User doesn't exist");
-        } else {
-            printError("User password doesn't match");
-        }
-    }
+//    while (1) {
+//        printf("Login to your account\n");
+//        User user = getUserInfo(0);
+//        int auth = authenticate(user, &tables);
+//        if (auth == 1) {
+//            printSuccess("Logged in successfully");
+//            break;
+//        } else if (auth == -1) {
+//            printError("User doesn't exist");
+//        } else {
+//            printError("User password doesn't match");
+//        }
+//    }
     while (1) {
         printf("\n$>> ");
         char *input = handleInput();
