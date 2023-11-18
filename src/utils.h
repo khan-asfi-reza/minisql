@@ -33,10 +33,10 @@ size_t strToLongInt(const char *str);
 int isUpdateKeyword(const char* str);
 int isDeleteKeyword(const char* str);
 int isSymbol(const char *str);
-char* replaceString(char *str, size_t idx, size_t endIdx, const char *subString);
+char *replaceString(char *str, size_t idx, size_t endIdx, const char *subString);
 int isValueFunc(const char* str);
 char* concatStrings(const char *strings[], int count);
-void freeMultiple(int count, ...);
+
 
 void printSuccess(const char *format, ...);
 void printError(const char *format, ...);
@@ -45,7 +45,8 @@ char *createBuffer();
 void insertInBuffer(char **buffer, const char *format, ...);
 char *createBufferWithSize(size_t size);
 size_t getLine(char **restrict line, size_t *restrict size, FILE *restrict file);
-void clearInputBuffer();
+
+
 char* escapeCommas(const char* input);
 size_t max(size_t a, size_t b);
 size_t isEven(size_t a);

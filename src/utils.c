@@ -33,7 +33,7 @@ void removeSingleQuotes(char *str) {
  */
 int caseInsensitiveCompare(const char *str1, const char *str2) {
     while (*str1 && *str2) {
-        if (toupper(*str1) != toupper(*str2)) {
+        if (toupper((unsigned char)*str1) != toupper((unsigned char)*str2)) {
             return *str1 - *str2;
         }
         str1++;
@@ -48,7 +48,7 @@ int caseInsensitiveCompare(const char *str1, const char *str2) {
  * Checks if a string is an SQL data type, data types: varchar, text, number, integer, boolean etc
  * @param str Comparable string
  * @return whether or not the string is in the array of DATA_TYPES;
- * @example isDataType("INTEGER") will return 1, isDataType("X") will return 0
+ *
  */
 int isDataType(const char* str) {
     for (int i = 0; i < LEN_DATA_TYPES; i++) {
@@ -64,10 +64,11 @@ int isDataType(const char* str) {
  * String "12" will be converted to -> 12 (decimal)
  * @param str String number
  * @return Decimal number extracted from the string number
- * long long = size_t
+ *
  */
 size_t strToLongInt(const char *str) {
     char *strPtr;
+    errno = 0;
     size_t value = strtol(str, &strPtr, 10);
     return value;
 }
@@ -272,7 +273,7 @@ char *replaceString(char *str, size_t idx, size_t endIdx, const char *subString)
 void stringToLower(char* str){
     if (str == NULL) return;
     for (int i = 0; str[i]; i++) {
-        str[i] = (char) tolower(str[i]);
+        str[i] = (char) tolower((unsigned char) str[i]);
     }
 }
 
@@ -412,14 +413,8 @@ char *createBufferWithSize(size_t size){
  * @return None
  */
 void insertInBuffer(char **buffer, const char *format, ...) {
-    // Function divided in two part
-    // First part identifies the required size for the new string
-    // Second part inserts the string
-
     va_list args;
     va_start(args, format);
-    // Instead of inserting the arg in a string buffer, it is not inserting but rather
-    // identifying the number of bytes needed to insert , + 1 for null terminator
     int neededSize = vsnprintf(NULL, 0, format, args) + 1;
     va_end(args);
     if (neededSize <= 0) {
@@ -438,33 +433,13 @@ void insertInBuffer(char **buffer, const char *format, ...) {
 }
 
 /**
-* Frees multiple heap allocated variable
-* @param count Number of variables
-* @return None
-*/
-void freeMultiple(int count, ...) {
-    va_list args;
-    va_start(args, count);
-
-    for (int i = 0; i < count; ++i) {
-        void *ptr = va_arg(args, void *);
-        free(ptr);
-    }
-    va_end(args);
-}
-
-/**
  * Clears a buffer
  * @param buffer Buffer pointer
  * @return None
  */
 void clearBuffer(char **buffer) {
-    if(buffer != NULL){
-        if(*buffer != NULL){
-            free(*buffer);
-        }
-        *buffer = NULL;
-    }
+    free(*buffer);
+    *buffer = NULL;
 }
 
 /**
@@ -557,31 +532,4 @@ size_t getLine(char **line, size_t *n, FILE *file) {
     }
     (*line)[i] = '\0';
     return i;
-}
-
-
-/**
- *T his function is often used after reading input using functions like
- * `scan_f` or `f_gets`.
- * These functions may leave a newline character or other unwanted characters in the input buffer.
- * If not cleared, these leftover characters can be mistakenly read by subsequent input operations,
- * leading to logical errors in the program. By calling clearInputBuffer,
- * ensure that the input buffer is clean before the next input operation.
- */
-void clearInputBuffer() {
-    int c;
-    /**
-     * This is a while loop that continuously calls getchar()
-     * to read the next character from the standard input.
-     * It assigns the character to c and then checks two conditions:
-     *
-     * - If c is not equal to the newline character ('\n'),
-     *   which usually signifies the end of a line of input.
-     * - If c is not the special EOF value,
-     *   which signifies the end of the input stream (for example, when the user has no more input to provide,
-     *   or if you're reading from a file and reach its end).
-     *  The loop continues until either a newline character is found or the end of the file/input stream is reached.
-     *  During each iteration, the function effectively discards the character read.
-     */
-    while ((c = getchar()) != '\n' && c != EOF) { }
 }

@@ -9,12 +9,7 @@
 #include <unistd.h>
 #endif
 
-
-/**
- * Checks if a directory exists in a given path
- * @param path Path of the new directory
- */
-int directoryExists(const char* path) {
+int directory_exists(const char* path) {
 #ifdef _WIN32
     DWORD ftyp = GetFileAttributesA(path);
     if (ftyp == INVALID_FILE_ATTRIBUTES)
@@ -30,19 +25,13 @@ int directoryExists(const char* path) {
 #endif
 }
 
-
-/**
- * Creates a directory given a path
- * @param path Path of the new directory
- */
-int createDirectory(const char* path) {
+int create_directory(const char* path) {
 #ifdef _WIN32
     return CreateDirectoryA(path, NULL) || ERROR_ALREADY_EXISTS == GetLastError();
 #else
     return mkdir(path, 0777) == 0 || errno == EEXIST;
 #endif
 }
-
 
 /**
  * Checks if a file exists in current path
@@ -142,3 +131,4 @@ int putInFile(char *fileName, char* text, int addNewLine){
     }
     return 0;
 }
+

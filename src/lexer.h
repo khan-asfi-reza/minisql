@@ -33,24 +33,22 @@ typedef struct {
 } Token;
 
 
-// Token Return type structure
 typedef struct {
-    Token* tokens; // List of tokens
-    size_t len; // Number of tokens
-    char* sql; // SQL String
+    Token* tokens;
+    size_t len;
+    char* sql;
 } TokenRet;
 
 struct {
-    char* display; // AS Keyword display Example: Select id as number,
-                   // anything after as keyword is a display string
-    Token columnToken; // Actual Column representing token
-    Token valueToken; // Value representing token
-    Token dataTypeToken; // Data type representing token
+    char* display;
+    Token columnToken;
+    Token valueToken;
+    Token dataTypeToken;
     Token symbol; // Only symbol Token
-    Token* funcToken; // Only built-in functions list;
-    Token nextLogicalOp; // Next logic AND / OR
+    Token* funcToken; // Only build in functions list;
+    Token nextLogicalOp;
     Token defaultToken; // Default value function
-    int isUnique; // If unique constraint is on
+    int isUnique;
 } typedef Column; // Column operation
 
 
@@ -62,10 +60,10 @@ struct {
     Token action; // Always will be a keyword
     Token table; // Token representing the table it will perform action
     Column columns[COL_MAX_SIZE]; // List of column operation
-    Column filters[COL_MAX_SIZE]; // Filters or where token columns
+    Column filters[COL_MAX_SIZE];
     Token primaryKey; // Primary key column
-    int colsLen; // Number of columns
-    int filtersLen; // Number of filters
+    int colsLen;
+    int filtersLen;
     char* sql;
     // List of filters
 
@@ -76,21 +74,19 @@ struct {
     Node ** nodes;
     char ** tables;
     size_t size;
-} typedef TableList;
+} typedef NodeList;
 
-TableList emptyNodeList();
+NodeList emptyNodeList();
 TokenType getTokenType(const char *token);
 void freeTokenParseMemory(char* input, char* inpArray, Token* tokens, size_t numTokens);
 void handleTokenParseMemError(char* input, char* inpArray, Token* tokens, size_t numTokens, const char* errorMessage);
 TokenRet lexAnalyze(char *input);
-void destroyNode(Node *node);
-void destroyNodeList(TableList *nodeList);
-void destroyToken(Token *token);
+
 Node createInvalidNode();
 
 Node createASTNode(TokenRet tokenRet);
-void insertInNodeList(TableList *nodeList, Node *node);
-Node *getNodeFromList(TableList *nodeList, char* table);
+void insertInNodeList(NodeList *nodeList, Node *node);
+Node *getNodeFromList(NodeList *nodeList, char* table);
 
 #endif //PARSER_H
 
